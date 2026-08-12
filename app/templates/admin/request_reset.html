@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}Request password reset | MAU-SOAP{% endblock %}
+
+{% block content %}
+  <section class="card auth-card">
+    <span class="eyebrow">Account recovery</span>
+    <h1>Reset your password</h1>
+    <p>Enter the configured Admin email address to receive a secure reset link.</p>
+
+    <form method="post" novalidate>
+      {{ form.hidden_tag() }}
+
+      <div class="form-group">
+        {{ form.email.label }}
+        {{ form.email(autocomplete="email", inputmode="email") }}
+        {% for error in form.email.errors %}
+          <span class="field-error">{{ error }}</span>
+        {% endfor %}
+      </div>
+
+      {{ form.submit(class="primary-button") }}
+    </form>
+
+    <p class="auth-footer">
+      <a href="{{ url_for('admin.login') }}">Return to login</a>
+    </p>
+  </section>
+{% endblock %}

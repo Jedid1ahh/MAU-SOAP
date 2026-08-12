@@ -8,11 +8,30 @@
   </head>
   <body>
     <header class="site-header">
-      <a href="{{ url_for('main.index') }}">MAU-SOAP</a>
+      <a class="brand" href="{{ url_for('main.index') }}">MAU-SOAP</a>
+      <nav aria-label="Primary navigation">
+        {% if current_user.is_authenticated %}
+          <a href="{{ url_for('admin.index') }}">Dashboard</a>
+          <form action="{{ url_for('admin.logout') }}" method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="link-button" type="submit">Log out</button>
+          </form>
+        {% else %}
+          <a href="{{ url_for('admin.login') }}">Admin login</a>
+        {% endif %}
+      </nav>
     </header>
+
     <main class="page-shell">
+      <section class="flash-stack" aria-live="polite">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% for category, message in messages %}
+            <div class="flash flash-{{ category }}">{{ message }}</div>
+          {% endfor %}
+        {% endwith %}
+      </section>
+
       {% block content %}{% endblock %}
     </main>
   </body>
 </html>
-

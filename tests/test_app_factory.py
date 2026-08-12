@@ -22,6 +22,23 @@ def test_factory_can_start_without_configuration_overrides():
 
     assert application.testing is True
 
+def test_development_mail_has_safe_local_defaults(monkeypatch):
+    """Local password-reset tests must not require a live SMTP account."""
+
+    monkeypatch.delenv("MAIL_DEFAULT_SENDER", raising=False)
+    monkeypatch.delenv("MAIL_SUPPRESS_SEND", raising=False)
+
+    from importlib import reload
+
+    from app import config
+
+    reloaded_config = reload(config)
+
+    assert reloaded_config.DevelopmentConfig.MAIL_SUPPRESS_SEND is True
+    assert (
+        reloaded_config.DevelopmentConfig.MAIL_DEFAULT_SENDER
+        == "noreply@mau-soap.local"
+    )
 
 def test_factory_registers_required_blueprints(app):
     """Every Phase 1 route group must be available."""
