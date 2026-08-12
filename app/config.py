@@ -21,7 +21,7 @@ def _as_bool(variable_name: str, default: bool = False) -> bool:
 
 
 def _database_url() -> str | None:
-    """Return a SQLAlchemy 2 compatible PostgreSQL URL when one is configured."""
+    """Return a SQLAlchemy 2 compatible database URL when configured."""
 
     url = os.getenv("DATABASE_URL")
     if not url:
@@ -44,6 +44,12 @@ class BaseConfig:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     CANDIDATE_EMAIL_DOMAIN = os.getenv("CANDIDATE_EMAIL_DOMAIN", "gmail.com")
+
+    # The idempotent ``flask seed-db`` command consumes these values. They are
+    # intentionally not given insecure source-code defaults.
+    DEFAULT_ADMIN_EMAIL = os.getenv("DEFAULT_ADMIN_EMAIL")
+    DEFAULT_ADMIN_PASSWORD = os.getenv("DEFAULT_ADMIN_PASSWORD")
+    SEED_DUMMY_EXAM = _as_bool("SEED_DUMMY_EXAM", default=True)
 
     MAIL_SERVER = os.getenv("MAIL_SERVER", "localhost")
     MAIL_PORT = int(os.getenv("MAIL_PORT", "25"))

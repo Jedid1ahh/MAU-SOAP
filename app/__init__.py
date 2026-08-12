@@ -12,28 +12,15 @@ from typing import Any
 from dotenv import load_dotenv
 from flask import Flask
 
-from .extensions import db, migrate
+from .extensions import bcrypt, db, migrate
 
 
 def create_app(
     config_name: str | None = None,
     test_config: dict[str, Any] | None = None,
 ) -> Flask:
-    """Create and configure one MAU-SOAP Flask application instance.
+    """Create and configure one MAU-SOAP Flask application instance."""
 
-    Args:
-        config_name: Named configuration (development, testing, or production).
-            When omitted, ``FLASK_CONFIG`` selects the configuration.
-        test_config: Optional dictionary used by automated tests to override
-            individual settings without modifying environment variables.
-
-    Returns:
-        A fully configured Flask application with all Phase 1 blueprints and
-        extensions registered.
-    """
-
-    # Load local variables before importing configuration classes. In
-    # production these values should come from the hosting environment instead.
     load_dotenv()
 
     from .config import CONFIG_BY_NAME, validate_configuration
@@ -54,6 +41,7 @@ def create_app(
     validate_configuration(app.config)
     _initialize_extensions(app)
     _register_blueprints(app)
+    _register_commands(app)
 
     return app
 
@@ -61,8 +49,14 @@ def create_app(
 def _initialize_extensions(app: Flask) -> None:
     """Bind shared Flask extensions to the current app instance."""
 
+    from .models import MODEL_REGISTRY
+
+    if not MODEL_REGISTRY:  # pragma: no cover
+        raise RuntimeError("No database models were registered.")
+
     db.init_app(app)
     migrate.init_app(app, db)
+    bcrypt.init_app(app)
 
 
 def _register_blueprints(app: Flask) -> None:
@@ -77,3 +71,11 @@ def _register_blueprints(app: Flask) -> None:
     app.register_blueprint(admin_bp, url_prefix="/admin")
     app.register_blueprint(candidate_bp, url_prefix="/exam")
     app.register_blueprint(api_bp, url_prefix="/api/v1")
+
+
+def _register_commands(app: Flask) -> None:
+    """Register maintenance commands on Flask's application CLI."""
+
+    from .cli import seed_db_command
+
+    app.cli.add_command(seed_db_command)

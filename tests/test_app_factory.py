@@ -15,6 +15,14 @@ def test_factory_uses_testing_configuration(app):
     assert app.config["CANDIDATE_EMAIL_DOMAIN"] == "gmail.com"
 
 
+def test_factory_can_start_without_configuration_overrides():
+    """The named testing configuration is complete without test overrides."""
+
+    application = create_app("testing")
+
+    assert application.testing is True
+
+
 def test_factory_registers_required_blueprints(app):
     """Every Phase 1 route group must be available."""
 
