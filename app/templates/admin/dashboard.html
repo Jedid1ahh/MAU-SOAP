@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block title %}Admin dashboard | MAU-SOAP{% endblock %}
+
+{% block content %}
+  <section class="card dashboard-card">
+    <span class="status-badge">Authenticated</span>
+    <h1>Admin dashboard</h1>
+    <p>
+      You are securely logged in as <strong>{{ current_user.email }}</strong>.
+      Exam management will be added in Phase 4.
+    </p>
+  </section>
+{% endblock %}

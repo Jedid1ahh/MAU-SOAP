@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}Admin login | MAU-SOAP{% endblock %}
+
+{% block content %}
+  <section class="card auth-card">
+    <span class="eyebrow">Secure Admin access</span>
+    <h1>Welcome back</h1>
+    <p>Log in with the pre-provisioned MAU-SOAP administrator account.</p>
+
+    <form method="post" novalidate>
+      {{ form.hidden_tag() }}
+
+      <div class="form-group">
+        {{ form.email.label }}
+        {{ form.email(autocomplete="username", inputmode="email") }}
+        {% for error in form.email.errors %}
+          <span class="field-error">{{ error }}</span>
+        {% endfor %}
+      </div>
+
+      <div class="form-group">
+        {{ form.password.label }}
+        {{ form.password(autocomplete="current-password") }}
+        {% for error in form.password.errors %}
+          <span class="field-error">{{ error }}</span>
+        {% endfor %}
+      </div>
+
+      {{ form.submit(class="primary-button") }}
+    </form>
+
+    <p class="auth-footer">
+      <a href="{{ url_for('admin.request_password_reset') }}">
+        Forgot your password?
+      </a>
+    </p>
+  </section>
+{% endblock %}

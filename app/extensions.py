@@ -5,8 +5,11 @@ This avoids circular imports and allows tests to create independent app objects.
 """
 
 from flask_bcrypt import Bcrypt
+from flask_login import LoginManager
+from flask_mail import Mail
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
+from flask_wtf import CSRFProtect
 from sqlalchemy import JSON, MetaData
 from sqlalchemy.orm import DeclarativeBase
 
@@ -43,3 +46,6 @@ def _render_migration_item(type_, item, autogen_context):
 
 migrate = Migrate(render_item=_render_migration_item)
 bcrypt = Bcrypt()
+login_manager = LoginManager()
+mail = Mail()
+csrf = CSRFProtect()

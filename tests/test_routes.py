@@ -13,11 +13,11 @@ def test_landing_page(client):
     assert b"Phase 1 running" in response.data
 
 
-def test_admin_placeholder(client):
+def test_admin_area_requires_login(client):
     response = client.get("/admin/")
 
-    assert response.status_code == 200
-    assert b"Admin area" in response.data
+    assert response.status_code == 302
+    assert "/admin/login" in response.headers["Location"]
 
 
 def test_candidate_placeholder(client):

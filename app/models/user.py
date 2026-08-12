@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from flask_login import UserMixin
 from sqlalchemy import Boolean, String, true
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -18,7 +19,7 @@ if TYPE_CHECKING:
     from .password_reset_token import PasswordResetToken
 
 
-class User(TimestampMixin, db.Model):
+class User(UserMixin, TimestampMixin, db.Model):
     """The single pre-provisioned MAU-SOAP administrator."""
 
     __tablename__ = "users"

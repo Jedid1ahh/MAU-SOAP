@@ -12,7 +12,7 @@ from typing import Any
 from dotenv import load_dotenv
 from flask import Flask
 
-from .extensions import bcrypt, db, migrate
+from .extensions import bcrypt, csrf, db, login_manager, mail, migrate
 
 
 def create_app(
@@ -57,6 +57,23 @@ def _initialize_extensions(app: Flask) -> None:
     db.init_app(app)
     migrate.init_app(app, db)
     bcrypt.init_app(app)
+    login_manager.init_app(app)
+    mail.init_app(app)
+    csrf.init_app(app)
+
+    login_manager.login_view = "admin.login"
+    login_manager.login_message = "Please log in to access the Admin area."
+    login_manager.login_message_category = "info"
+
+    @login_manager.user_loader
+    def load_user(user_id: str):
+        """Restore the logged-in Admin from Flask's signed session."""
+
+        from .models import User
+
+        if not user_id.isdigit():
+            return None
+        return db.session.get(User, int(user_id))
 
 
 def _register_blueprints(app: Flask) -> None:

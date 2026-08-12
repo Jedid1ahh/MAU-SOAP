@@ -3,7 +3,8 @@
 import pytest
 
 from app import create_app
-from app.extensions import db
+from app.extensions import bcrypt, db
+from app.models import Role, User
 
 
 @pytest.fixture()
@@ -32,3 +33,19 @@ def client(app):
     """Provide Flask's HTTP test client."""
 
     return app.test_client()
+
+
+@pytest.fixture()
+def admin(app):
+    """Create the pre-provisioned Admin expected by authentication tests."""
+
+    user = User(
+        email="admin@mau.edu.ng",
+        password_hash=bcrypt.generate_password_hash("Phase3TestPassword!").decode(
+            "utf-8"
+        ),
+        role=Role.ADMIN,
+    )
+    db.session.add(user)
+    db.session.commit()
+    return user
