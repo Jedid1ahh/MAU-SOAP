@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+
+{% block title %}{{ form_title }} | MAU-SOAP{% endblock %}
+
+{% block content %}
+  <section class="card form-card">
+    <span class="eyebrow">{{ exam.course_code }}</span>
+    <h1>{{ form_title }}</h1>
+    <p>{{ exam.title }}</p>
+
+    <form method="post" novalidate>
+      {{ form.hidden_tag() }}
+
+      <div class="form-group">
+        {{ form.question_text.label }}
+        {{ form.question_text(rows="5") }}
+
+        {% for error in form.question_text.errors %}
+          <span class="field-error">{{ error }}</span>
+        {% endfor %}
+      </div>
+
+      <div class="form-grid">
+        <div class="form-group">
+          {{ form.question_type.label }}
+          {{ form.question_type() }}
+
+          {% for error in form.question_type.errors %}
+            <span class="field-error">{{ error }}</span>
+          {% endfor %}
+        </div>
+
+        <div class="form-group">
+          {{ form.marks.label }}
+          {{ form.marks(min="0.01", step="0.01") }}
+
+          {% for error in form.marks.errors %}
+            <span class="field-error">{{ error }}</span>
+          {% endfor %}
+        </div>
+      </div>
+
+      <fieldset id="mcq-fields" class="conditional-panel">
+        <legend>Multiple-choice answers</legend>
+
+        <p>
+          Options A and B are required.
+          Options C and D are optional.
+        </p>
+
+        <div class="form-grid">
+          {% for field in [
+            form.mcq_option_a,
+            form.mcq_option_b,
+            form.mcq_option_c,
+            form.mcq_option_d
+          ] %}
+            <div class="form-group">
+              {{ field.label }}
+              {{ field() }}
+
+              {% for error in field.errors %}
+                <span class="field-error">{{ error }}</span>
+              {% endfor %}
+            </div>
+          {% endfor %}
+
+          <div class="form-group form-group-wide">
+            {{ form.correct_option.label }}
+            {{ form.correct_option() }}
+
+            {% for error in form.correct_option.errors %}
+              <span class="field-error">{{ error }}</span>
+            {% endfor %}
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset
+        id="short-answer-fields"
+        class="conditional-panel"
+      >
+        <legend>Short-answer grading</legend>
+
+        <div class="form-group">
+          {{ form.short_answer.label }}
+          {{ form.short_answer() }}
+
+          {% for error in form.short_answer.errors %}
+            <span class="field-error">{{ error }}</span>
+          {% endfor %}
+        </div>
+
+        <label class="checkbox-row">
+          {{ form.short_answer_case_sensitive() }}
+          {{ form.short_answer_case_sensitive.label.text }}
+        </label>
+
+        <label class="checkbox-row">
+          {{ form.short_answer_trim_whitespace() }}
+          {{ form.short_answer_trim_whitespace.label.text }}
+        </label>
+      </fieldset>
+
+      <div
+        id="open-ended-help"
+        class="conditional-panel"
+      >
+        <strong>Manual grading required</strong>
+
+        <p>
+          Open-ended answers will be placed in the
+          Phase 9 manual-review queue.
+        </p>
+      </div>
+
+      <div class="form-actions">
+        <button
+          class="primary-button button-auto"
+          type="submit"
+        >
+          {{ submit_label }}
+        </button>
+
+        <a
+          class="secondary-button"
+          href="{{ url_for(
+            'admin.exam_detail',
+            exam_id=exam.id
+          ) }}"
+        >
+          Cancel
+        </a>
+      </div>
+    </form>
+  </section>
+
+  <script>
+    const typeSelect = document.getElementById("question_type");
+
+    const panels = {
+      mcq: document.getElementById("mcq-fields"),
+      short_answer: document.getElementById("short-answer-fields"),
+      open_ended: document.getElementById("open-ended-help"),
+    };
+
+    function showQuestionFields() {
+      Object.entries(panels).forEach(([type, panel]) => {
+        panel.hidden = type !== typeSelect.value;
+      });
+    }
+
+    typeSelect.addEventListener("change", showQuestionFields);
+    showQuestionFields();
+  </script>
+{% endblock %}

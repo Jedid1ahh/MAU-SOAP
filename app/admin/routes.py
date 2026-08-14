@@ -17,12 +17,17 @@ from flask_login import current_user, login_user, logout_user
 from sqlalchemy import select
 
 from app.extensions import bcrypt, db
-from app.models import PasswordResetToken, User
+from app.models import Exam, PasswordResetToken, User
 
 from . import admin_bp
 from .auth import admin_required
 from .forms import LoginForm, PasswordResetForm, PasswordResetRequestForm
-from .services import create_reset_token, resolve_reset_token, send_reset_email, utc_now
+from .services import (
+    create_reset_token,
+    resolve_reset_token,
+    send_reset_email,
+    utc_now,
+)
 
 
 def _safe_next_url(target: str | None) -> str | None:
@@ -76,10 +81,15 @@ def logout():
 @admin_bp.get("/")
 @admin_required
 def index():
-    """Render the protected Phase 3 Admin dashboard."""
+    """Render the Admin's Phase 4 examination dashboard."""
 
-    return render_template("admin/dashboard.html")
+    exams = db.session.scalars(
+        select(Exam)
+        .where(Exam.admin_id == current_user.id)
+        .order_by(Exam.created_at.desc())
+    ).all()
 
+    return render_template("admin/dashboard.html", exams=exams)
 
 @admin_bp.route("/password-reset", methods=["GET", "POST"])
 def request_password_reset():
