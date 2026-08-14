@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}
+  Enter verification code | MAU-SOAP
+{% endblock %}
+
+{% block content %}
+  <section class="card auth-card">
+    <span class="eyebrow">Candidate verification</span>
+    <h1>Check your email</h1>
+
+    <p>
+      We sent a six-digit code and secure link to
+      <strong>
+        {{ verification.candidate_email }}
+      </strong>.
+    </p>
+
+    <form method="post" novalidate>
+      {{ form.hidden_tag() }}
+
+      <div class="form-group verification-code">
+        {{ form.otp.label }}
+
+        {{ form.otp(
+          autocomplete="one-time-code",
+          inputmode="numeric",
+          maxlength="6",
+          pattern="[0-9]{6}"
+        ) }}
+
+        {% for error in form.otp.errors %}
+          <span class="field-error">{{ error }}</span>
+        {% endfor %}
+      </div>
+
+      <button class="primary-button" type="submit">
+        Verify and continue
+      </button>
+    </form>
+
+    <div class="auth-footer">
+      <a
+        href="{{ url_for(
+          'candidate.exam_landing',
+          token=exam.exam_link_token
+        ) }}"
+      >
+        Request a new code
+      </a>
+    </div>
+  </section>
+{% endblock %}

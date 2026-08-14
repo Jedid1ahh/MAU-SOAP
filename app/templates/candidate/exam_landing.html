@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 
-{% block title %}{{ exam.title }} | MAU-SOAP{% endblock %}
+{% block title %}
+  Verify identity | {{ exam.title }}
+{% endblock %}
 
 {% block content %}
   <section class="card auth-card">
@@ -20,8 +22,42 @@
       </div>
     </dl>
 
-    <div class="flash flash-info">
-      Candidate email verification will be activated in Phase 5.
-    </div>
+    <h2>Verify your identity</h2>
+
+    <p>
+      Enter your full name and approved email address.
+      We will send both a six-digit code and a secure
+      verification link.
+    </p>
+
+    <form method="post" novalidate>
+      {{ form.hidden_tag() }}
+
+      <div class="form-group">
+        {{ form.name.label }}
+        {{ form.name(autocomplete="name") }}
+
+        {% for error in form.name.errors %}
+          <span class="field-error">{{ error }}</span>
+        {% endfor %}
+      </div>
+
+      <div class="form-group">
+        {{ form.email.label }}
+
+        {{ form.email(
+          autocomplete="email",
+          inputmode="email"
+        ) }}
+
+        {% for error in form.email.errors %}
+          <span class="field-error">{{ error }}</span>
+        {% endfor %}
+      </div>
+
+      <button class="primary-button" type="submit">
+        Send verification code
+      </button>
+    </form>
   </section>
 {% endblock %}

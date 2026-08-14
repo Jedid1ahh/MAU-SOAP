@@ -37,6 +37,11 @@ class VerificationToken(db.Model):
         unique=True,
         index=True,
     )
+    session_token_hash: Mapped[str | None] = mapped_column(
+        String(64),
+        unique=True,
+        index=True,
+    )
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     attempts: Mapped[int] = mapped_column(default=0, server_default="0")
     locked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

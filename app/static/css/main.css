@@ -122,6 +122,17 @@ body {
 .form-group input,
 .form-group select,
 .form-group textarea,
+.verification-code input {
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: 0.35rem;
+  text-align: center;
+}
+
+.primary-button:disabled {
+  background: #8a98a8;
+  cursor: not-allowed;
+}
 .copy-row input {
   border: 1px solid #aebbc9;
   border-radius: 0.45rem;
