@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}{{ exam.title }} | MAU-SOAP{% endblock %}
+
+{% block content %}
+  <section class="card auth-card">
+    <span class="eyebrow">{{ exam.course_code }}</span>
+    <h1>{{ exam.title }}</h1>
+    <p>{{ exam.course_title }}</p>
+
+    <dl class="metadata-list metadata-list-stacked">
+      <div>
+        <dt>Time limit</dt>
+        <dd>{{ exam.time_limit_minutes }} minutes</dd>
+      </div>
+
+      <div>
+        <dt>Questions</dt>
+        <dd>{{ exam.questions|length }}</dd>
+      </div>
+    </dl>
+
+    <div class="flash flash-info">
+      Candidate email verification will be activated in Phase 5.
+    </div>
+  </section>
+{% endblock %}

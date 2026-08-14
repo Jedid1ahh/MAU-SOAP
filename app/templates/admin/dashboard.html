@@ -3,12 +3,87 @@
 {% block title %}Admin dashboard | MAU-SOAP{% endblock %}
 
 {% block content %}
-  <section class="card dashboard-card">
-    <span class="status-badge">Authenticated</span>
-    <h1>Admin dashboard</h1>
-    <p>
-      You are securely logged in as <strong>{{ current_user.email }}</strong>.
-      Exam management will be added in Phase 4.
-    </p>
+  <section class="dashboard-shell">
+    <div class="page-heading">
+      <div>
+        <span class="eyebrow">
+          Authenticated · Examination management
+        </span>
+        <h1>Admin dashboard</h1>
+        <p>Welcome, <strong>{{ current_user.email }}</strong>.</p>
+      </div>
+
+      <a
+        class="primary-button button-auto"
+        href="{{ url_for('admin.create_exam') }}"
+      >
+        Create examination
+      </a>
+    </div>
+
+    {% if exams %}
+      <div class="exam-grid">
+        {% for exam in exams %}
+          <article class="card exam-card">
+            <div class="card-heading">
+              <span
+                class="status-badge {% if exam.is_locked %}status-locked{% endif %}"
+              >
+                {{ "Locked" if exam.is_locked else "Editable" }}
+              </span>
+
+              <span class="muted-text">
+                {{ exam.questions|length }} question(s)
+              </span>
+            </div>
+
+            <h2>{{ exam.title }}</h2>
+
+            <p>
+              <strong>{{ exam.course_code }}</strong>
+              — {{ exam.course_title }}
+            </p>
+
+            <dl class="metadata-list">
+              <div>
+                <dt>Time limit</dt>
+                <dd>{{ exam.time_limit_minutes }} minutes</dd>
+              </div>
+
+              <div>
+                <dt>Monitoring</dt>
+                <dd>
+                  {{ "Face presence" if exam.monitor_type.value == "face"
+                     else "Eye/gaze" }}
+                </dd>
+              </div>
+            </dl>
+
+            <a
+              class="secondary-button"
+              href="{{ url_for('admin.exam_detail', exam_id=exam.id) }}"
+            >
+              Manage examination
+            </a>
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <section class="card empty-state">
+        <h2>No examinations yet</h2>
+
+        <p>
+          Create your first examination, configure monitoring,
+          and add questions.
+        </p>
+
+        <a
+          class="primary-button button-auto"
+          href="{{ url_for('admin.create_exam') }}"
+        >
+          Create your first examination
+        </a>
+      </section>
+    {% endif %}
   </section>
 {% endblock %}

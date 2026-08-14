@@ -1,0 +1,276 @@
+{% extends "base.html" %}
+
+{% block title %}{{ exam.title }} | MAU-SOAP{% endblock %}
+
+{% block content %}
+  {% set share_url = url_for(
+    'candidate.exam_landing',
+    token=exam.exam_link_token,
+    _external=True
+  ) %}
+
+  <section class="dashboard-shell">
+    <div class="page-heading">
+      <div>
+        <span
+          class="status-badge {% if exam.is_locked %}status-locked{% endif %}"
+        >
+          {{ "Locked" if exam.is_locked else "Editable" }}
+        </span>
+
+        <h1>{{ exam.title }}</h1>
+
+        <p>
+          <strong>{{ exam.course_code }}</strong>
+          — {{ exam.course_title }}
+        </p>
+      </div>
+
+      <a
+        class="secondary-button"
+        href="{{ url_for('admin.index') }}"
+      >
+        Back to dashboard
+      </a>
+    </div>
+
+    {% if exam.is_locked %}
+      <div class="flash flash-info">
+        A Candidate has started this examination. Its settings
+        and questions can no longer be edited or deleted.
+      </div>
+    {% endif %}
+
+    <div class="detail-grid">
+      <section class="card">
+        <div class="card-heading">
+          <h2>Examination settings</h2>
+
+          {% if not exam.is_locked %}
+            <a
+              href="{{ url_for(
+                'admin.edit_exam',
+                exam_id=exam.id
+              ) }}"
+            >
+              Edit settings
+            </a>
+          {% endif %}
+        </div>
+
+        <dl class="metadata-list metadata-list-stacked">
+          <div>
+            <dt>Time limit</dt>
+            <dd>{{ exam.time_limit_minutes }} minutes</dd>
+          </div>
+
+          <div>
+            <dt>Monitoring</dt>
+            <dd>
+              {{ "Face presence"
+                 if exam.monitor_type.value == "face"
+                 else "Eye/gaze" }}
+            </dd>
+          </div>
+
+          <div>
+            <dt>Warning limit</dt>
+            <dd>3 warnings</dd>
+          </div>
+        </dl>
+
+        {% if exam.instructions %}
+          <h3>Candidate instructions</h3>
+          <p class="pre-line">{{ exam.instructions }}</p>
+        {% endif %}
+      </section>
+
+      <section class="card">
+        <h2>Shareable examination link</h2>
+
+        <p>
+          This cryptographic link does not expose the
+          examination's database ID.
+        </p>
+
+        <div class="copy-row">
+          <input
+            id="share-link"
+            type="url"
+            value="{{ share_url }}"
+            readonly
+          >
+
+          <button
+            class="secondary-button"
+            id="copy-link"
+            type="button"
+          >
+            Copy
+          </button>
+        </div>
+
+        <p class="muted-text">
+          Candidate email verification will be activated in Phase 5.
+        </p>
+      </section>
+    </div>
+
+    <section class="card questions-card">
+      <div class="card-heading">
+        <div>
+          <h2>Questions</h2>
+
+          <p>
+            {{ exam.questions|length }} question(s) configured.
+          </p>
+        </div>
+
+        {% if not exam.is_locked %}
+          <a
+            class="primary-button button-auto"
+            href="{{ url_for(
+              'admin.create_question',
+              exam_id=exam.id
+            ) }}"
+          >
+            Add question
+          </a>
+        {% endif %}
+      </div>
+
+      {% if exam.questions %}
+        <ol class="question-list">
+          {% for question in exam.questions %}
+            <li>
+              <article class="question-item">
+                <div class="question-content">
+                  <div class="question-meta">
+                    <span>
+                      {{ question.question_type.value
+                         |replace('_', ' ')
+                         |title }}
+                    </span>
+
+                    <span>{{ question.marks }} mark(s)</span>
+                  </div>
+
+                  <h3>{{ question.question_text }}</h3>
+
+                  {% if question.question_type.value == "mcq" %}
+                    <ul class="option-list">
+                      {% for key, answer in question.options.items() %}
+                        <li
+                          class="{% if key == question.correct_answer %}correct-option{% endif %}"
+                        >
+                          <strong>{{ key }}.</strong>
+                          {{ answer }}
+                        </li>
+                      {% endfor %}
+                    </ul>
+                  {% elif question.question_type.value == "short_answer" %}
+                    <p>
+                      <strong>Expected answer:</strong>
+                      {{ question.correct_answer }}
+                    </p>
+                  {% else %}
+                    <p class="muted-text">
+                      This response will require manual grading.
+                    </p>
+                  {% endif %}
+                </div>
+
+                {% if not exam.is_locked %}
+                  <div class="item-actions">
+                    <a
+                      href="{{ url_for(
+                        'admin.edit_question',
+                        exam_id=exam.id,
+                        question_id=question.id
+                      ) }}"
+                    >
+                      Edit
+                    </a>
+
+                    <form
+                      action="{{ url_for(
+                        'admin.delete_question',
+                        exam_id=exam.id,
+                        question_id=question.id
+                      ) }}"
+                      method="post"
+                      onsubmit="return confirm('Delete this question?');"
+                    >
+                      <input
+                        type="hidden"
+                        name="csrf_token"
+                        value="{{ csrf_token() }}"
+                      >
+
+                      <button
+                        class="danger-link"
+                        type="submit"
+                      >
+                        Delete
+                      </button>
+                    </form>
+                  </div>
+                {% endif %}
+              </article>
+            </li>
+          {% endfor %}
+        </ol>
+      {% else %}
+        <div class="empty-state compact-empty">
+          <p>No questions have been added.</p>
+        </div>
+      {% endif %}
+    </section>
+
+    {% if not exam.is_locked %}
+      <section class="danger-zone">
+        <div>
+          <h2>Delete examination</h2>
+
+          <p>
+            This permanently removes the examination
+            and every question.
+          </p>
+        </div>
+
+        <form
+          action="{{ url_for(
+            'admin.delete_exam',
+            exam_id=exam.id
+          ) }}"
+          method="post"
+          onsubmit="return confirm('Delete this examination and all its questions?');"
+        >
+          <input
+            type="hidden"
+            name="csrf_token"
+            value="{{ csrf_token() }}"
+          >
+
+          <button
+            class="danger-button"
+            type="submit"
+          >
+            Delete examination
+          </button>
+        </form>
+      </section>
+    {% endif %}
+  </section>
+
+  <script>
+    const copyButton = document.getElementById("copy-link");
+
+    copyButton.addEventListener("click", async () => {
+      const shareLink = document.getElementById("share-link");
+
+      await navigator.clipboard.writeText(shareLink.value);
+      copyButton.textContent = "Copied";
+    });
+  </script>
+{% endblock %}
