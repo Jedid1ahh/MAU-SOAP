@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}
+  Submission received | MAU-SOAP
+{% endblock %}
+
+{% block content %}
+  <section class="card auth-card">
+    <span class="status-badge">
+      Submission received
+    </span>
+
+    <h1>
+      Thank you, {{ submission.candidate_name }}
+    </h1>
+
+    <p>
+      Your responses for
+      <strong>{{ exam.title }}</strong>
+      have been recorded. This submission is final
+      and cannot be changed.
+    </p>
+
+    <dl class="metadata-list metadata-list-stacked">
+      <div>
+        <dt>Course</dt>
+        <dd>
+          {{ exam.course_code }} —
+          {{ exam.course_title }}
+        </dd>
+      </div>
+
+      <div>
+        <dt>Candidate</dt>
+        <dd>{{ submission.candidate_email }}</dd>
+      </div>
+
+      <div>
+        <dt>Submission reason</dt>
+        <dd>
+          {{
+            submission.submission_reason
+            |replace("_", " ")
+            |title
+          }}
+        </dd>
+      </div>
+    </dl>
+
+    <div class="flash flash-info">
+      Grading and result release will be activated
+      in later phases.
+    </div>
+  </section>
+{% endblock %}

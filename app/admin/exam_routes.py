@@ -244,9 +244,8 @@ def delete_exam(exam_id: int):
     if locked_response := _locked_redirect(exam):
         return locked_response
 
-    for question in exam.questions:
-        db.session.delete(question)
-
+    exam.questions.clear()
+    exam.verification_tokens.clear()
     db.session.delete(exam)
     db.session.commit()
 

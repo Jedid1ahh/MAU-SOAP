@@ -13,6 +13,8 @@ def test_factory_uses_testing_configuration(app):
     assert app.testing is True
     assert app.config["SQLALCHEMY_DATABASE_URI"] == "sqlite+pysqlite:///:memory:"
     assert app.config["CANDIDATE_EMAIL_DOMAIN"] == "gmail.com"
+    assert app.config["CANDIDATE_VERIFICATION_MAX_AGE_MINUTES"] == 10
+    assert app.config["CANDIDATE_SESSION_MAX_AGE_MINUTES"] == 30
 
 
 def test_factory_can_start_without_configuration_overrides():

@@ -224,9 +224,7 @@ def test_exam_detail_and_candidate_share_link_use_token(
     assert b"Answer every question" in detail.data
     assert landing.status_code == 200
     assert b"Software Testing" in landing.data
-    assert b"Candidate email verification will be activated in Phase 5" in (
-        landing.data
-    )
+    assert b"Verify your identity" in landing.data
     assert client.get("/exam/not-a-real-token").status_code == 404
 
 
