@@ -1,8 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}
-  Ready for {{ exam.title }} | MAU-SOAP
-{% endblock %}
+{% block title %}Ready for {{ exam.title }} | MAU-SOAP{% endblock %}
 
 {% block content %}
   <section class="card auth-card">
@@ -11,8 +9,7 @@
     <h1>{{ exam.title }}</h1>
 
     <p>
-      Welcome,
-      <strong>{{ verification.candidate_name }}</strong>.
+      Welcome, <strong>{{ verification.candidate_name }}</strong>.
       Your identity has been verified as
       {{ verification.candidate_email }}.
     </p>
@@ -38,33 +35,41 @@
       <div>
         <dt>Monitoring</dt>
         <dd>
-          {{ "Face presence"
-             if exam.monitor_type.value == "face"
-             else "Eye/gaze" }}
+          {{
+            "Face presence"
+            if exam.monitor_type.value == "face"
+            else "Eye/gaze"
+          }}
         </dd>
       </div>
     </dl>
 
     {% if exam.instructions %}
       <h2>Instructions</h2>
-
-      <p class="pre-line">
-        {{ exam.instructions }}
-      </p>
+      <p class="pre-line">{{ exam.instructions }}</p>
     {% endif %}
 
     <div class="flash flash-info">
-      The examination has not started and its timer is
-      not running. The Start examination action will be
-      activated in Phase 6.
+      The examination has not started and its timer is not running.
+      Once you start, the server timer cannot be paused or restarted.
     </div>
 
-    <button
-      class="primary-button"
-      type="button"
-      disabled
+    <form
+      action="{{ url_for(
+        'candidate.start_exam',
+        token=exam.exam_link_token
+      ) }}"
+      method="post"
     >
-      Start examination
-    </button>
+      <input
+        type="hidden"
+        name="csrf_token"
+        value="{{ csrf_token() }}"
+      >
+
+      <button class="primary-button" type="submit">
+        Start examination
+      </button>
+    </form>
   </section>
 {% endblock %}

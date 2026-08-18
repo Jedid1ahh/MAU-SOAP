@@ -1,0 +1,328 @@
+{% extends "base.html" %}
+
+{% block title %}
+  {{ exam.title }} | Examination in progress
+{% endblock %}
+
+{% block content %}
+  <section class="exam-session-shell">
+    <header class="card session-header">
+      <div>
+        <span class="eyebrow">
+          {{ exam.course_code }}
+        </span>
+
+        <h1>{{ exam.title }}</h1>
+        <p>{{ submission.candidate_name }}</p>
+      </div>
+
+      <div class="timer-panel" aria-live="polite">
+        <span>Time remaining</span>
+        <strong id="exam-timer">--:--</strong>
+        <small>Server synchronized</small>
+      </div>
+    </header>
+
+    <form
+      id="exam-form"
+      class="card exam-paper"
+      action="{{ url_for(
+        'candidate.submit_exam',
+        token=exam.exam_link_token
+      ) }}"
+      method="post"
+    >
+      <input
+        type="hidden"
+        name="csrf_token"
+        value="{{ csrf_token() }}"
+      >
+
+      <div
+        id="question-container"
+        aria-live="polite"
+      >
+        <p>Loading examination questions…</p>
+      </div>
+
+      <div class="form-actions exam-submit-row">
+        <p class="muted-text">
+          Submission is final and cannot be changed.
+        </p>
+
+        <button
+          class="primary-button button-auto"
+          type="submit"
+        >
+          Submit examination
+        </button>
+      </div>
+    </form>
+  </section>
+
+  <script>
+    const questionsUrl = {{
+      url_for(
+        "candidate.session_questions",
+        token=exam.exam_link_token
+      )|tojson
+    }};
+
+    const timeUrl = {{
+      url_for(
+        "candidate.session_time",
+        token=exam.exam_link_token
+      )|tojson
+    }};
+
+    const submittedUrl = {{
+      url_for(
+        "candidate.submission_received",
+        token=exam.exam_link_token
+      )|tojson
+    }};
+
+    const questionContainer =
+      document.getElementById("question-container");
+
+    const timerElement =
+      document.getElementById("exam-timer");
+
+    let remainingSeconds = {{
+      initial_remaining_seconds
+    }};
+
+    let timerHandle;
+
+    function formatTime(totalSeconds) {
+      const safeSeconds = Math.max(
+        0,
+        totalSeconds
+      );
+
+      const hours = Math.floor(
+        safeSeconds / 3600
+      );
+
+      const minutes = Math.floor(
+        (safeSeconds % 3600) / 60
+      );
+
+      const seconds = safeSeconds % 60;
+
+      if (hours > 0) {
+        return (
+          `${String(hours).padStart(2, "0")}:` +
+          `${String(minutes).padStart(2, "0")}:` +
+          `${String(seconds).padStart(2, "0")}`
+        );
+      }
+
+      return (
+        `${String(minutes).padStart(2, "0")}:` +
+        `${String(seconds).padStart(2, "0")}`
+      );
+    }
+
+    function renderTime() {
+      timerElement.textContent =
+        formatTime(remainingSeconds);
+
+      timerElement.classList.toggle(
+        "timer-urgent",
+        remainingSeconds <= 300
+      );
+    }
+
+    function addQuestion(question) {
+      const fieldset =
+        document.createElement("fieldset");
+
+      fieldset.className = "exam-question";
+
+      const legend =
+        document.createElement("legend");
+
+      legend.textContent =
+        `${question.position}. ${question.question_text}`;
+
+      fieldset.appendChild(legend);
+
+      const meta =
+        document.createElement("p");
+
+      meta.className = "question-meta";
+
+      meta.textContent =
+        `${question.question_type.replace("_", " ")} · ` +
+        `${question.marks} mark(s)`;
+
+      fieldset.appendChild(meta);
+
+      const fieldName =
+        `question_${question.id}`;
+
+      if (question.question_type === "mcq") {
+        Object.entries(
+          question.options
+        ).forEach(([key, answer]) => {
+          const label =
+            document.createElement("label");
+
+          label.className = "answer-option";
+
+          const input =
+            document.createElement("input");
+
+          input.type = "radio";
+          input.name = fieldName;
+          input.value = key;
+
+          const text =
+            document.createElement("span");
+
+          text.textContent =
+            `${key}. ${answer}`;
+
+          label.append(input, text);
+          fieldset.appendChild(label);
+        });
+      } else {
+        const textarea =
+          document.createElement("textarea");
+
+        textarea.name = fieldName;
+
+        textarea.rows =
+          question.question_type === "open_ended"
+            ? 8
+            : 3;
+
+        textarea.maxLength = 10000;
+
+        textarea.setAttribute(
+          "aria-label",
+          `Answer to question ${question.position}`
+        );
+
+        fieldset.appendChild(textarea);
+      }
+
+      questionContainer.appendChild(
+        fieldset
+      );
+    }
+
+    async function loadQuestions() {
+      const response = await fetch(
+        questionsUrl,
+        {
+          headers: {
+            Accept: "application/json"
+          }
+        }
+      );
+
+      if (response.status === 409) {
+        window.location.assign(
+          submittedUrl
+        );
+        return;
+      }
+
+      if (!response.ok) {
+        questionContainer.textContent =
+          "Questions could not be loaded. " +
+          "Refresh the page to try again.";
+
+        return;
+      }
+
+      const payload =
+        await response.json();
+
+      questionContainer.replaceChildren();
+
+      payload.questions.forEach(
+        addQuestion
+      );
+    }
+
+    async function synchronizeTime() {
+      const response = await fetch(
+        timeUrl,
+        {
+          headers: {
+            Accept: "application/json"
+          }
+        }
+      );
+
+      if (!response.ok) {
+        return;
+      }
+
+      const payload =
+        await response.json();
+
+      remainingSeconds =
+        payload.remaining_seconds;
+
+      renderTime();
+
+      if (payload.submitted) {
+        window.location.assign(
+          submittedUrl
+        );
+      }
+    }
+
+    function startTimer() {
+      renderTime();
+
+      timerHandle = window.setInterval(
+        () => {
+          remainingSeconds = Math.max(
+            0,
+            remainingSeconds - 1
+          );
+
+          renderTime();
+
+          if (remainingSeconds === 0) {
+            window.clearInterval(
+              timerHandle
+            );
+
+            synchronizeTime();
+          }
+        },
+        1000
+      );
+
+      window.setInterval(
+        synchronizeTime,
+        10000
+      );
+    }
+
+    document
+      .getElementById("exam-form")
+      .addEventListener(
+        "submit",
+        (event) => {
+          const confirmed = window.confirm(
+            "Submit your examination now? " +
+            "You cannot change it afterward."
+          );
+
+          if (!confirmed) {
+            event.preventDefault();
+          }
+        }
+      );
+
+    loadQuestions();
+    startTimer();
+  </script>
+{% endblock %}
