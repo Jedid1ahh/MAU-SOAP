@@ -8,7 +8,7 @@ from app.models import Role, User
 
 
 @pytest.fixture()
-def app():
+def app(tmp_path):
     """Create a fresh isolated Flask application for each test."""
 
     application = create_app(
@@ -17,6 +17,9 @@ def app():
             "DEFAULT_ADMIN_EMAIL": "admin@mau.edu.ng",
             "DEFAULT_ADMIN_PASSWORD": "Phase2TestPassword!",
             "SEED_DUMMY_EXAM": True,
+            "SUPERVISION_EVIDENCE_DIR": str(
+                tmp_path / "evidence"
+            ),
         },
     )
 

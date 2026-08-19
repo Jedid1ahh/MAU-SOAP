@@ -68,6 +68,17 @@ class BaseConfig:
     CANDIDATE_SESSION_MAX_AGE_MINUTES = int(
         os.getenv("CANDIDATE_SESSION_MAX_AGE_MINUTES", "30")
     )
+
+    SUPERVISION_EVIDENCE_DIR = os.getenv("SUPERVISION_EVIDENCE_DIR")
+    SUPERVISION_EVIDENCE_MAX_BYTES = int(
+        os.getenv("SUPERVISION_EVIDENCE_MAX_BYTES", str(25 * 1024 * 1024))
+    )
+    SUPERVISION_EVIDENCE_MAX_DURATION_SECONDS = int(
+        os.getenv("SUPERVISION_EVIDENCE_MAX_DURATION_SECONDS", "3600")
+    )
+    SUPERVISION_EVIDENCE_RETENTION_DAYS = int(
+        os.getenv("SUPERVISION_EVIDENCE_RETENTION_DAYS", "30")
+    )
     PERMANENT_SESSION_LIFETIME = timedelta(minutes=30)
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
@@ -129,4 +140,31 @@ def validate_configuration(config: Mapping[str, Any]) -> None:
     if not domain or "@" in domain:
         raise RuntimeError(
             "CANDIDATE_EMAIL_DOMAIN must be a bare domain such as gmail.com."
+        )
+
+    if int(config.get("SUPERVISION_EVIDENCE_MAX_BYTES", 0)) <= 0:
+        raise RuntimeError(
+            "SUPERVISION_EVIDENCE_MAX_BYTES must be positive."
+        )
+
+    if int(
+        config.get(
+            "SUPERVISION_EVIDENCE_MAX_DURATION_SECONDS",
+            0,
+        )
+    ) <= 0:
+        raise RuntimeError(
+            "SUPERVISION_EVIDENCE_MAX_DURATION_SECONDS "
+            "must be positive."
+        )
+
+    if int(
+        config.get(
+            "SUPERVISION_EVIDENCE_RETENTION_DAYS",
+            0,
+        )
+    ) <= 0:
+        raise RuntimeError(
+            "SUPERVISION_EVIDENCE_RETENTION_DAYS "
+            "must be positive."
         )

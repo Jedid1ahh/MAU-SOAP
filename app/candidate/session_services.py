@@ -76,6 +76,7 @@ def start_submission(
         responses={},
         resume_token_hash=session_token_hash,
         started_at=started_at,
+        supervision_consent_at=started_at,
         warn_count=0,
     )
 
@@ -183,3 +184,23 @@ def finalize_submission(
     submission.last_saved_at = submitted_at
     submission.submitted_at = submitted_at
     submission.submission_reason = "manual"
+
+def finalize_warning_limit(
+    submission: Submission,
+    responses: dict[str, str],
+) -> None:
+    """Finalize an active attempt after its third integrity warning."""
+
+    if submission.is_finalized:
+        return
+
+    if remaining_seconds(submission) <= 0:
+        finalize_expired_submission(submission)
+        return
+
+    submitted_at = utc_now()
+
+    submission.responses = responses
+    submission.last_saved_at = submitted_at
+    submission.submitted_at = submitted_at
+    submission.submission_reason = "warning_limit"

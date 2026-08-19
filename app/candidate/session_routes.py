@@ -1,4 +1,4 @@
-"""Phase 6 Candidate start, timing, question, and submission routes."""
+"""Candidate timing, question, submission, and supervision routes."""
 
 from __future__ import annotations
 
@@ -15,19 +15,39 @@ from flask import (
 from sqlalchemy import select
 
 from app.extensions import db
-from app.models import Exam, QuestionType
+from app.models import (
+    Exam,
+    QuestionType,
+    Submission,
+    ViolationType,
+    WarningLog,
+)
 
 from . import candidate_bp
+from .evidence_services import (
+    EvidenceTooLargeError,
+    InvalidEvidenceError,
+    attach_face_absence_evidence,
+)
 from .services import resolve_candidate_session
 from .session_services import (
     ExistingAttemptError,
     FinalizedSubmissionError,
     finalize_expired_submission,
     finalize_submission,
+    finalize_warning_limit,
     remaining_seconds,
     resolve_submission_session,
     start_submission,
     submission_deadline,
+)
+from .supervision_services import (
+    WARNING_LIMIT,
+    InvalidViolationError,
+    WarningLimitReachedError,
+    record_warning,
+    sanitize_metadata,
+    violation_type_for_exam,
 )
 
 
@@ -66,6 +86,20 @@ def _submission_for_request(exam: Exam):
     return resolve_submission_session(
         exam,
         _raw_session_token(exam),
+    )
+
+
+def _lock_submission(
+    submission: Submission,
+) -> Submission:
+    """Lock one attempt while its warning counter is updated."""
+
+    return db.session.scalar(
+        select(Submission)
+        .where(
+            Submission.id == submission.id
+        )
+        .with_for_update()
     )
 
 
@@ -110,11 +144,49 @@ def _response_payload(
             abort(400)
 
         if (
-            question.question_type is QuestionType.MCQ
+            question.question_type
+            is QuestionType.MCQ
             and answer
-            and answer not in (question.options or {})
+            and answer
+            not in (question.options or {})
         ):
             abort(400)
+
+        responses[str(question.id)] = answer
+
+    return responses
+
+def _supervision_response_payload(
+    exam: Exam,
+    raw_responses: object,
+) -> dict[str, str]:
+    """Keep valid current answers when the warning limit submits an attempt."""
+
+    if not isinstance(raw_responses, dict):
+        return {}
+
+    responses = {}
+
+    for question in exam.questions:
+        answer = raw_responses.get(
+            str(question.id),
+            "",
+        )
+
+        if (
+            not isinstance(answer, str)
+            or len(answer) > 10_000
+        ):
+            answer = ""
+
+        if (
+            question.question_type
+            is QuestionType.MCQ
+            and answer
+            and answer
+            not in (question.options or {})
+        ):
+            answer = ""
 
         responses[str(question.id)] = answer
 
@@ -159,6 +231,16 @@ def start_exam(token: str):
             )
         )
 
+    if request.form.get("supervision_consent") != "yes":
+        flash(
+            "You must consent to the disclosed camera supervision and "
+            "face-absence evidence recording before starting.",
+            "error",
+        )
+        return redirect(
+            url_for("candidate.exam_ready", token=token)
+        )
+
     try:
         submission, created = start_submission(
             exam,
@@ -181,10 +263,6 @@ def start_exam(token: str):
         )
 
     db.session.commit()
-
-    # Once an examination starts, retain the browser-session token for
-    # the entire browser session instead of using the verification
-    # token's short permanent-cookie lifetime.
     session.permanent = False
 
     if submission.is_finalized:
@@ -282,7 +360,7 @@ def session_questions(token: str):
 
 @candidate_bp.get("/<token>/session/time")
 def session_time(token: str):
-    """Return time calculated only from server-controlled values."""
+    """Return remaining time from server-controlled values."""
 
     exam = _exam_by_token(token)
     submission = _submission_for_request(exam)
@@ -309,6 +387,206 @@ def session_time(token: str):
         submitted=submission.is_finalized,
         reason=submission.submission_reason,
     )
+
+
+@candidate_bp.post(
+    "/<token>/session/violations"
+)
+def report_violation(token: str):
+    """Validate and persist one active-session supervision event."""
+
+    exam = _exam_by_token(token)
+    submission = _submission_for_request(exam)
+
+    if submission is None:
+        return jsonify(
+            error="Candidate session required."
+        ), 403
+
+    submission = _lock_submission(
+        submission
+    )
+
+    if (
+        submission.is_finalized
+        or finalize_expired_submission(
+            submission
+        )
+    ):
+        db.session.commit()
+
+        return jsonify(
+            submitted=True,
+            reason=submission.submission_reason,
+        ), 409
+
+    payload = request.get_json(
+        silent=True
+    )
+
+    if not isinstance(payload, dict):
+        return jsonify(
+            error=(
+                "A JSON violation event "
+                "is required."
+            )
+        ), 400
+
+    try:
+        violation_type = (
+            violation_type_for_exam(
+                payload.get(
+                    "violation_type"
+                ),
+                exam.monitor_type,
+            )
+        )
+
+        metadata = sanitize_metadata(
+            payload.get("metadata")
+        )
+
+        warning, recorded = record_warning(
+            submission,
+            violation_type,
+            metadata,
+        )
+
+    except InvalidViolationError:
+        return jsonify(
+            error=(
+                "Invalid supervision event."
+            )
+        ), 400
+
+    except WarningLimitReachedError:
+        return jsonify(
+            error=(
+                "The warning limit has "
+                "already been reached."
+            ),
+            warning_count=(
+                submission.warn_count
+            ),
+            warning_limit=WARNING_LIMIT,
+            warning_limit_reached=True,
+        ), 409
+
+    warning_limit_reached = (
+        submission.warn_count
+        >= WARNING_LIMIT
+    )
+
+    if (
+        recorded
+        and warning_limit_reached
+    ):
+        finalize_warning_limit(
+            submission,
+            _supervision_response_payload(
+                exam,
+                payload.get("responses"),
+            ),
+        )
+
+    db.session.commit()
+
+    return jsonify(
+        recorded=recorded,
+        warning_id=warning.id,
+        violation_type=(
+            warning.violation_type.value
+        ),
+        message=warning.message,
+        occurred_at=(
+            warning.occurred_at.isoformat()
+        ),
+        warning_count=(
+            submission.warn_count
+        ),
+        warning_limit=WARNING_LIMIT,
+        warning_limit_reached=(
+            warning_limit_reached
+        ),
+        submitted=(
+            submission.is_finalized
+        ),
+        reason=(
+            submission.submission_reason
+        ),
+    ), 201 if recorded else 200
+
+
+@candidate_bp.post(
+    "/<token>/session/violations/<int:warning_id>/evidence"
+)
+def upload_violation_evidence(token: str, warning_id: int):
+    """Attach one private face-absence clip to its matching warning."""
+
+    exam = _exam_by_token(token)
+    submission = _submission_for_request(exam)
+
+    if submission is None:
+        return jsonify(
+            error="Candidate session required."
+        ), 403
+
+    warning = db.session.scalar(
+        select(WarningLog)
+        .where(
+            WarningLog.id == warning_id,
+            WarningLog.submission_id == submission.id,
+            WarningLog.violation_type
+            == ViolationType.FACE_NOT_DETECTED,
+        )
+        .with_for_update()
+    )
+
+    if warning is None:
+        return jsonify(
+            error="Matching face-absence warning not found."
+        ), 404
+
+    if warning.evidence_storage_name is not None:
+        return jsonify(
+            error="Evidence has already been uploaded."
+        ), 409
+
+    stored_path = None
+
+    try:
+        stored_path = attach_face_absence_evidence(
+            warning,
+            request.files.get("video"),
+            request.form,
+        )
+        db.session.commit()
+
+    except EvidenceTooLargeError:
+        db.session.rollback()
+        return jsonify(
+            error="The evidence clip is too large."
+        ), 413
+
+    except InvalidEvidenceError:
+        db.session.rollback()
+        return jsonify(
+            error="Invalid evidence upload."
+        ), 400
+
+    except Exception:
+        db.session.rollback()
+
+        if stored_path is not None:
+            stored_path.unlink(missing_ok=True)
+
+        raise
+
+    return jsonify(
+        evidence_uploaded=True,
+        warning_id=warning.id,
+        duration_ms=warning.evidence_duration_ms,
+    ), 201
 
 
 @candidate_bp.post("/<token>/session/submit")

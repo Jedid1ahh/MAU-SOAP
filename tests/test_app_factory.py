@@ -136,3 +136,31 @@ def test_database_url_can_be_absent(monkeypatch):
     monkeypatch.delenv("DATABASE_URL", raising=False)
 
     assert _database_url() is None
+
+@pytest.mark.parametrize(
+    ("setting", "message"),
+    [
+        (
+            "SUPERVISION_EVIDENCE_MAX_BYTES",
+            "MAX_BYTES",
+        ),
+        (
+            "SUPERVISION_EVIDENCE_MAX_DURATION_SECONDS",
+            "MAX_DURATION_SECONDS",
+        ),
+        (
+            "SUPERVISION_EVIDENCE_RETENTION_DAYS",
+            "RETENTION_DAYS",
+        ),
+    ],
+)
+def test_configuration_rejects_invalid_evidence_limits(
+    app,
+    setting,
+    message,
+):
+    configured = dict(app.config)
+    configured[setting] = 0
+
+    with pytest.raises(RuntimeError, match=message):
+        validate_configuration(configured)

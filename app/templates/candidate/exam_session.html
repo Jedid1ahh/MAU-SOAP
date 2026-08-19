@@ -5,7 +5,25 @@
 {% endblock %}
 
 {% block content %}
-  <section class="exam-session-shell">
+  <section
+    id="exam-session"
+    class="exam-session-shell"
+    data-monitor-type="{{ exam.monitor_type.value }}"
+    data-violation-url="{{ url_for(
+      'candidate.report_violation',
+      token=exam.exam_link_token
+    ) }}"
+    data-submitted-url="{{ url_for(
+      'candidate.submission_received',
+      token=exam.exam_link_token
+    ) }}"
+    data-csrf-token="{{ csrf_token() }}"
+    data-warning-count="{{ submission.warn_count }}"
+    data-warning-limit="3"
+    data-mediapipe-module-url="{{ url_for('static', filename='vendor/mediapipe/vision_bundle.mjs') }}"
+    data-mediapipe-wasm-url="{{ url_for('static', filename='vendor/mediapipe/wasm') }}"
+    data-face-landmarker-model-url="{{ url_for('static', filename='models/face_landmarker.task') }}"
+  >
     <header class="card session-header">
       <div>
         <span class="eyebrow">
@@ -16,12 +34,56 @@
         <p>{{ submission.candidate_name }}</p>
       </div>
 
-      <div class="timer-panel" aria-live="polite">
+      <div
+        class="timer-panel"
+        aria-live="polite"
+      >
         <span>Time remaining</span>
         <strong id="exam-timer">--:--</strong>
         <small>Server synchronized</small>
       </div>
     </header>
+
+    <section
+      class="card supervision-panel"
+      aria-labelledby="supervision-title"
+    >
+      <div>
+        <span class="eyebrow">
+          Active supervision
+        </span>
+
+        <h2 id="supervision-title">
+          {{
+            "Face presence"
+            if exam.monitor_type.value == "face"
+            else "Eye and gaze"
+          }}
+          monitoring
+        </h2>
+
+        <p
+          id="monitor-status"
+          class="monitor-status"
+          aria-live="polite"
+        >
+          Requesting camera permission…
+        </p>
+
+        <p class="muted-text">
+          Video is processed on this device during normal monitoring. If your face is not detected, a video-only evidence clip covering the absence through your return is uploaded securely for the authenticated Admin. Evidence is retained for 30 days.
+        </p>
+      </div>
+
+      <video
+        id="monitor-preview"
+        class="monitor-preview"
+        autoplay
+        muted
+        playsinline
+        aria-label="Local webcam monitoring preview"
+      ></video>
+    </section>
 
     <form
       id="exam-form"
@@ -58,6 +120,18 @@
         </button>
       </div>
     </form>
+
+    <div
+      id="integrity-warning"
+      class="integrity-warning"
+      role="alert"
+      aria-live="assertive"
+      hidden
+    >
+      <strong>Integrity warning</strong>
+      <span id="integrity-warning-message"></span>
+      <span id="integrity-warning-count"></span>
+    </div>
   </section>
 
   <script>
@@ -270,7 +344,18 @@
 
       renderTime();
 
-      if (payload.submitted) {
+
+      const evidenceUploadPending =
+        document
+          .getElementById("exam-session")
+          ?.dataset
+        .evidenceUploadPending
+        === "true";
+
+      if (
+        payload.submitted
+        && !evidenceUploadPending
+      ) {
         window.location.assign(
           submittedUrl
         );
@@ -325,4 +410,12 @@
     loadQuestions();
     startTimer();
   </script>
+
+  <script
+    type="module"
+    src="{{ url_for(
+      'static',
+      filename='js/exam_supervision.js'
+    ) }}"
+  ></script>
 {% endblock %}

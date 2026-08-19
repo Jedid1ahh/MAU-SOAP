@@ -149,3 +149,33 @@ def seed_db_command() -> None:
     exam_status = "created" if exam_created else "already exists or disabled"
     click.echo(f"Default Admin: {admin_status}.")
     click.echo(f"Development exam: {exam_status}.")
+
+@click.command(
+    "cleanup-supervision-evidence"
+)
+@with_appcontext
+def cleanup_supervision_evidence_command() -> None:
+    """Delete supervision clips beyond the retention period."""
+
+    from .candidate.evidence_services import (
+        purge_expired_evidence,
+    )
+
+    try:
+        deleted_count = (
+            purge_expired_evidence()
+        )
+        db.session.commit()
+
+    except Exception as exc:
+        db.session.rollback()
+
+        raise click.ClickException(
+            "Supervision evidence cleanup failed: "
+            f"{exc}"
+        ) from exc
+
+    click.echo(
+        f"Deleted {deleted_count} expired "
+        "supervision evidence file(s)."
+    )
