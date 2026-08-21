@@ -1,43 +1,31 @@
 {% extends "base.html" %}
 
-{% block title %}
-  {{ exam.title }} | Examination in progress
-{% endblock %}
+{% block title %}{{ exam.title }} | Examination in progress{% endblock %}
 
 {% block content %}
   <section
     id="exam-session"
     class="exam-session-shell"
     data-monitor-type="{{ exam.monitor_type.value }}"
-    data-violation-url="{{ url_for(
-      'candidate.report_violation',
-      token=exam.exam_link_token
-    ) }}"
-    data-submitted-url="{{ url_for(
-      'candidate.submission_received',
-      token=exam.exam_link_token
-    ) }}"
+    data-violation-url="{{ url_for('candidate.report_violation', token=exam.exam_link_token) }}"
+    data-submitted-url="{{ url_for('candidate.submission_received', token=exam.exam_link_token) }}"
     data-csrf-token="{{ csrf_token() }}"
     data-warning-count="{{ submission.warn_count }}"
     data-warning-limit="3"
+    data-exam-token="{{ exam.exam_link_token }}"
+    data-autosave-url="{{ url_for('candidate.autosave_exam', token=exam.exam_link_token) }}"
     data-mediapipe-module-url="{{ url_for('static', filename='vendor/mediapipe/vision_bundle.mjs') }}"
     data-mediapipe-wasm-url="{{ url_for('static', filename='vendor/mediapipe/wasm') }}"
     data-face-landmarker-model-url="{{ url_for('static', filename='models/face_landmarker.task') }}"
   >
     <header class="card session-header">
       <div>
-        <span class="eyebrow">
-          {{ exam.course_code }}
-        </span>
-
+        <span class="eyebrow">{{ exam.course_code }}</span>
         <h1>{{ exam.title }}</h1>
         <p>{{ submission.candidate_name }}</p>
       </div>
 
-      <div
-        class="timer-panel"
-        aria-live="polite"
-      >
+      <div class="timer-panel" aria-live="polite">
         <span>Time remaining</span>
         <strong id="exam-timer">--:--</strong>
         <small>Server synchronized</small>
@@ -49,17 +37,10 @@
       aria-labelledby="supervision-title"
     >
       <div>
-        <span class="eyebrow">
-          Active supervision
-        </span>
+        <span class="eyebrow">Active supervision</span>
 
         <h2 id="supervision-title">
-          {{
-            "Face presence"
-            if exam.monitor_type.value == "face"
-            else "Eye and gaze"
-          }}
-          monitoring
+          {{ "Face presence" if exam.monitor_type.value == "face" else "Eye and gaze" }} monitoring
         </h2>
 
         <p
@@ -71,7 +52,10 @@
         </p>
 
         <p class="muted-text">
-          Video is processed on this device during normal monitoring. If your face is not detected, a video-only evidence clip covering the absence through your return is uploaded securely for the authenticated Admin. Evidence is retained for 30 days.
+          Video is processed on this device during normal monitoring.
+          If your face is not detected, a video-only evidence clip
+          covering the absence through your return is uploaded securely
+          for the authenticated Admin.
         </p>
       </div>
 
@@ -88,10 +72,7 @@
     <form
       id="exam-form"
       class="card exam-paper"
-      action="{{ url_for(
-        'candidate.submit_exam',
-        token=exam.exam_link_token
-      ) }}"
+      action="{{ url_for('candidate.submit_exam', token=exam.exam_link_token) }}"
       method="post"
     >
       <input
@@ -99,6 +80,14 @@
         name="csrf_token"
         value="{{ csrf_token() }}"
       >
+
+      <p
+        id="autosave-status"
+        class="muted-text"
+        aria-live="polite"
+      >
+        Answers save automatically while you work.
+      </p>
 
       <div
         id="question-container"
@@ -135,53 +124,38 @@
   </section>
 
   <script>
-    const questionsUrl = {{
-      url_for(
-        "candidate.session_questions",
-        token=exam.exam_link_token
-      )|tojson
-    }};
+    const questionsUrl = {{ url_for(
+      'candidate.session_questions',
+      token=exam.exam_link_token
+    )|tojson }};
 
-    const timeUrl = {{
-      url_for(
-        "candidate.session_time",
-        token=exam.exam_link_token
-      )|tojson
-    }};
+    const timeUrl = {{ url_for(
+      'candidate.session_time',
+      token=exam.exam_link_token
+    )|tojson }};
 
-    const submittedUrl = {{
-      url_for(
-        "candidate.submission_received",
-        token=exam.exam_link_token
-      )|tojson
-    }};
+    const submittedUrl = {{ url_for(
+      'candidate.submission_received',
+      token=exam.exam_link_token
+    )|tojson }};
 
-    const questionContainer =
-      document.getElementById("question-container");
+    const questionContainer = document.getElementById(
+      "question-container"
+    );
 
-    const timerElement =
-      document.getElementById("exam-timer");
+    const timerElement = document.getElementById(
+      "exam-timer"
+    );
 
-    let remainingSeconds = {{
-      initial_remaining_seconds
-    }};
-
+    let remainingSeconds = {{ initial_remaining_seconds }};
     let timerHandle;
 
     function formatTime(totalSeconds) {
-      const safeSeconds = Math.max(
-        0,
-        totalSeconds
-      );
-
-      const hours = Math.floor(
-        safeSeconds / 3600
-      );
-
+      const safeSeconds = Math.max(0, totalSeconds);
+      const hours = Math.floor(safeSeconds / 3600);
       const minutes = Math.floor(
         (safeSeconds % 3600) / 60
       );
-
       const seconds = safeSeconds % 60;
 
       if (hours > 0) {
@@ -199,8 +173,9 @@
     }
 
     function renderTime() {
-      timerElement.textContent =
-        formatTime(remainingSeconds);
+      timerElement.textContent = formatTime(
+        remainingSeconds
+      );
 
       timerElement.classList.toggle(
         "timer-urgent",
@@ -208,83 +183,73 @@
       );
     }
 
-    function addQuestion(question) {
-      const fieldset =
-        document.createElement("fieldset");
-
+    function addQuestion(question, savedAnswer = "") {
+      const fieldset = document.createElement(
+        "fieldset"
+      );
       fieldset.className = "exam-question";
 
-      const legend =
-        document.createElement("legend");
-
-      legend.textContent =
-        `${question.position}. ${question.question_text}`;
-
+      const legend = document.createElement("legend");
+      legend.textContent = (
+        `${question.position}. ${question.question_text}`
+      );
       fieldset.appendChild(legend);
 
-      const meta =
-        document.createElement("p");
-
+      const meta = document.createElement("p");
       meta.className = "question-meta";
-
-      meta.textContent =
+      meta.textContent = (
         `${question.question_type.replace("_", " ")} · ` +
-        `${question.marks} mark(s)`;
-
+        `${question.marks} mark(s)`
+      );
       fieldset.appendChild(meta);
 
-      const fieldName =
-        `question_${question.id}`;
+      const fieldName = `question_${question.id}`;
 
       if (question.question_type === "mcq") {
-        Object.entries(
-          question.options
-        ).forEach(([key, answer]) => {
-          const label =
-            document.createElement("label");
+        Object.entries(question.options).forEach(
+          ([key, answer]) => {
+            const label = document.createElement(
+              "label"
+            );
+            label.className = "answer-option";
 
-          label.className = "answer-option";
+            const input = document.createElement(
+              "input"
+            );
+            input.type = "radio";
+            input.name = fieldName;
+            input.value = key;
+            input.checked = savedAnswer === key;
 
-          const input =
-            document.createElement("input");
+            const text = document.createElement(
+              "span"
+            );
+            text.textContent = `${key}. ${answer}`;
 
-          input.type = "radio";
-          input.name = fieldName;
-          input.value = key;
-
-          const text =
-            document.createElement("span");
-
-          text.textContent =
-            `${key}. ${answer}`;
-
-          label.append(input, text);
-          fieldset.appendChild(label);
-        });
+            label.append(input, text);
+            fieldset.appendChild(label);
+          }
+        );
       } else {
-        const textarea =
-          document.createElement("textarea");
-
+        const textarea = document.createElement(
+          "textarea"
+        );
         textarea.name = fieldName;
-
-        textarea.rows =
+        textarea.rows = (
           question.question_type === "open_ended"
             ? 8
-            : 3;
-
+            : 3
+        );
         textarea.maxLength = 10000;
-
+        textarea.value = savedAnswer;
         textarea.setAttribute(
           "aria-label",
           `Answer to question ${question.position}`
         );
-
         fieldset.appendChild(textarea);
       }
 
-      questionContainer.appendChild(
-        fieldset
-      );
+      questionContainer.appendChild(fieldset);
     }
 
     async function loadQuestions() {
@@ -298,27 +263,50 @@
       );
 
       if (response.status === 409) {
-        window.location.assign(
-          submittedUrl
-        );
+        window.location.assign(submittedUrl);
         return;
       }
 
       if (!response.ok) {
-        questionContainer.textContent =
+        questionContainer.textContent = (
           "Questions could not be loaded. " +
-          "Refresh the page to try again.";
-
+          "Refresh the page to try again."
+        );
         return;
       }
 
-      const payload =
-        await response.json();
+      const payload = await response.json();
 
       questionContainer.replaceChildren();
 
-      payload.questions.forEach(
-        addQuestion
+      payload.questions.forEach((question) => {
+        addQuestion(
+          question,
+          payload.responses[String(question.id)] || ""
+        );
+      });
+
+      const sessionRoot = document.getElementById(
+        "exam-session"
+      );
+
+      sessionRoot.dataset.warningCount =
+        payload.warning_count;
+
+      sessionRoot.dataset.resumeToken =
+        payload.resume_token;
+
+      document.dispatchEvent(
+        new CustomEvent(
+          "mau-soap:questions-loaded",
+          {
+            detail: {
+              responses: payload.responses,
+              lastSavedAt: payload.last_saved_at,
+              resumeToken: payload.resume_token
+            }
+          }
+        )
       );
     }
 
@@ -336,54 +324,40 @@
         return;
       }
 
-      const payload =
-        await response.json();
+      const payload = await response.json();
 
-      remainingSeconds =
-        payload.remaining_seconds;
-
+      remainingSeconds = payload.remaining_seconds;
       renderTime();
-
 
       const evidenceUploadPending =
         document
           .getElementById("exam-session")
           ?.dataset
-        .evidenceUploadPending
-        === "true";
+          .evidenceUploadPending === "true";
 
       if (
         payload.submitted
         && !evidenceUploadPending
       ) {
-        window.location.assign(
-          submittedUrl
-        );
+        window.location.assign(submittedUrl);
       }
     }
 
     function startTimer() {
       renderTime();
 
-      timerHandle = window.setInterval(
-        () => {
-          remainingSeconds = Math.max(
-            0,
-            remainingSeconds - 1
-          );
+      timerHandle = window.setInterval(() => {
+        remainingSeconds = Math.max(
+          0,
+          remainingSeconds - 1
+        );
+        renderTime();
 
-          renderTime();
-
-          if (remainingSeconds === 0) {
-            window.clearInterval(
-              timerHandle
-            );
-
-            synchronizeTime();
-          }
-        },
-        1000
-      );
+        if (remainingSeconds === 0) {
+          window.clearInterval(timerHandle);
+          synchronizeTime();
+        }
+      }, 1000);
 
       window.setInterval(
         synchronizeTime,
@@ -413,9 +387,11 @@
 
   <script
     type="module"
-    src="{{ url_for(
-      'static',
-      filename='js/exam_supervision.js'
-    ) }}"
+    src="{{ url_for('static', filename='js/exam_supervision.js') }}"
+  ></script>
+
+  <script
+    src="{{ url_for('static', filename='js/exam_autosave.js') }}"
+    defer
   ></script>
 {% endblock %}

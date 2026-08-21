@@ -1,19 +1,29 @@
 {% extends "base.html" %}
 
-{% block title %}
-  Verify identity | {{ exam.title }}
-{% endblock %}
+{% block title %}Verify identity | {{ exam.title }}{% endblock %}
 
 {% block content %}
-  <section class="card auth-card">
-    <span class="eyebrow">{{ exam.course_code }}</span>
+  <section
+    id="candidate-entry"
+    class="card auth-card"
+    data-exam-token="{{ exam.exam_link_token }}"
+    data-resume-url="{{ url_for('candidate.resume_exam', token=exam.exam_link_token) }}"
+    data-csrf-token="{{ csrf_token() }}"
+  >
+    <span class="eyebrow">
+      {{ exam.course_code }}
+    </span>
+
     <h1>{{ exam.title }}</h1>
     <p>{{ exam.course_title }}</p>
 
     <dl class="metadata-list metadata-list-stacked">
       <div>
         <dt>Time limit</dt>
-        <dd>{{ exam.time_limit_minutes }} minutes</dd>
+        <dd>
+          {{ exam.time_limit_minutes }}
+          minutes
+        </dd>
       </div>
 
       <div>
@@ -25,9 +35,18 @@
     <h2>Verify your identity</h2>
 
     <p>
-      Enter your full name and approved email address.
-      We will send both a six-digit code and a secure
-      verification link.
+      Enter your full name and approved email
+      address. We will send both a six-digit
+      code and a secure verification link.
+    </p>
+
+    <p
+      id="resume-status"
+      class="flash flash-info"
+      hidden
+    >
+      A saved examination attempt was found.
+      Restoring it now…
     </p>
 
     <form method="post" novalidate>
@@ -35,10 +54,15 @@
 
       <div class="form-group">
         {{ form.name.label }}
-        {{ form.name(autocomplete="name") }}
+
+        {{ form.name(
+          autocomplete="name"
+        ) }}
 
         {% for error in form.name.errors %}
-          <span class="field-error">{{ error }}</span>
+          <span class="field-error">
+            {{ error }}
+          </span>
         {% endfor %}
       </div>
 
@@ -51,13 +75,23 @@
         ) }}
 
         {% for error in form.email.errors %}
-          <span class="field-error">{{ error }}</span>
+          <span class="field-error">
+            {{ error }}
+          </span>
         {% endfor %}
       </div>
 
-      <button class="primary-button" type="submit">
+      <button
+        class="primary-button"
+        type="submit"
+      >
         Send verification code
       </button>
     </form>
   </section>
+
+  <script
+    src="{{ url_for('static', filename='js/candidate_resume.js') }}"
+    defer
+  ></script>
 {% endblock %}
