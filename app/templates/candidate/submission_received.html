@@ -1,8 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}
-  Submission received | MAU-SOAP
-{% endblock %}
+{% block title %}Submission received | MAU-SOAP{% endblock %}
 
 {% block content %}
   <section class="card auth-card">
@@ -38,11 +36,9 @@
       <div>
         <dt>Submission reason</dt>
         <dd>
-          {{
-            submission.submission_reason
-            |replace("_", " ")
-            |title
-          }}
+          {{ submission.submission_reason
+             |replace('_', ' ')
+             |title }}
         </dd>
       </div>
     </dl>
@@ -52,4 +48,17 @@
       in later phases.
     </div>
   </section>
+
+  <script>
+    try {
+      window.localStorage.removeItem(
+        {{ (
+          "mau-soap:draft:" ~ exam.exam_link_token
+        )|tojson }}
+      );
+    } catch (_error) {
+      // The finalized server submission remains
+      // authoritative.
+    }
+  </script>
 {% endblock %}

@@ -1,4 +1,4 @@
-"""Passwordless Candidate verification routes."""
+"""Passwordless Candidate verification routes for one shared examination."""
 
 from __future__ import annotations
 
@@ -18,10 +18,7 @@ from app.extensions import db
 from app.models import Exam, VerificationToken
 
 from . import candidate_bp
-from .forms import (
-    CandidateIdentityForm,
-    OTPVerificationForm,
-)
+from .forms import CandidateIdentityForm, OTPVerificationForm
 from .services import (
     complete_verification,
     create_verification,
@@ -32,17 +29,20 @@ from .services import (
     verification_is_expired,
     verify_otp,
 )
+from .session_services import (
+    finalize_expired_submission,
+    resolve_submission_session,
+)
 
 
 def _exam_by_token(token: str) -> Exam:
-    """Resolve a public examination token."""
+    """Resolve a public CSPRNG examination token or return HTTP 404."""
 
     exam = db.session.scalar(
         select(Exam).where(
             Exam.exam_link_token == token
         )
     )
-
     if exam is None:
         abort(404)
 
@@ -50,9 +50,7 @@ def _exam_by_token(token: str) -> Exam:
 
 
 def _pending_session_key(exam: Exam) -> str:
-    return (
-        f"candidate_pending_verification_{exam.id}"
-    )
+    return f"candidate_pending_verification_{exam.id}"
 
 
 def _access_session_key(exam: Exam) -> str:
@@ -81,21 +79,20 @@ def _finish_verification(
     exam: Exam,
     verification: VerificationToken,
 ):
-    """Complete verification and establish access."""
+    """Persist verification and establish signed-cookie access."""
 
     raw_session_token = complete_verification(
         verification
     )
-
     db.session.commit()
 
     session.pop(
         _pending_session_key(exam),
         None,
     )
-    session[_access_session_key(exam)] = (
-        raw_session_token
-    )
+    session[
+        _access_session_key(exam)
+    ] = raw_session_token
     session.permanent = True
 
     flash(
@@ -116,14 +113,14 @@ def _finish_verification(
 
 @candidate_bp.get("/")
 def index():
-    """Explain examination-specific Candidate access."""
+    """Explain Candidate examination-link access."""
 
     return render_template(
         "placeholder.html",
         page_title="Candidate area",
         message=(
-            "Use the secure examination link "
-            "supplied by your administrator."
+            "Use the secure examination link supplied "
+            "by your administrator."
         ),
     )
 
@@ -133,13 +130,49 @@ def index():
     methods=["GET", "POST"],
 )
 def exam_landing(token: str):
-    """Collect identity and dispatch verification."""
+    """Collect Candidate identity and send verification credentials."""
 
     exam = _exam_by_token(token)
 
+    raw_session_token = session.get(
+        _access_session_key(exam)
+    )
+
+    active_submission = resolve_submission_session(
+        exam,
+        (
+            raw_session_token
+            if isinstance(raw_session_token, str)
+            else None
+        ),
+    )
+
+    if active_submission is not None:
+        if (
+            active_submission.is_finalized
+            or finalize_expired_submission(
+                active_submission
+            )
+        ):
+            db.session.commit()
+
+            return redirect(
+                url_for(
+                    "candidate.submission_received",
+                    token=token,
+                )
+            )
+
+        return redirect(
+            url_for(
+                "candidate.exam_session",
+                token=token,
+            )
+        )
+
     active_verification = resolve_candidate_session(
         exam,
-        session.get(_access_session_key(exam)),
+        raw_session_token,
     )
 
     if active_verification is not None:
@@ -153,12 +186,14 @@ def exam_landing(token: str):
     form = CandidateIdentityForm()
 
     if form.validate_on_submit():
-        raw_otp, raw_magic_token, verification = (
-            create_verification(
-                exam,
-                form.name.data,
-                form.email.data,
-            )
+        (
+            raw_otp,
+            raw_magic_token,
+            verification,
+        ) = create_verification(
+            exam,
+            form.name.data,
+            form.email.data,
         )
 
         try:
@@ -171,19 +206,17 @@ def exam_landing(token: str):
             )
 
             db.session.commit()
-
         except Exception:
             db.session.rollback()
 
             current_app.logger.exception(
-                "Unable to send Candidate "
-                "verification email"
+                "Unable to send Candidate verification email"
             )
 
             flash(
                 (
-                    "Verification email could not be "
-                    "sent. Please try again."
+                    "Verification email could not be sent. "
+                    "Please try again."
                 ),
                 "error",
             )
@@ -200,8 +233,8 @@ def exam_landing(token: str):
 
         flash(
             (
-                "A verification code and secure "
-                "link have been sent."
+                "A verification code and secure link "
+                "have been sent."
             ),
             "success",
         )
@@ -225,7 +258,7 @@ def exam_landing(token: str):
     methods=["GET", "POST"],
 )
 def verify_otp_code(token: str):
-    """Verify OTP with five-attempt lockout."""
+    """Verify the emailed OTP with five-attempt lockout."""
 
     exam = _exam_by_token(token)
     verification = _pending_verification(exam)
@@ -316,9 +349,8 @@ def verify_otp_code(token: str):
 
         flash(
             (
-                f"Incorrect code. "
-                f"{remaining_attempts} attempt(s) "
-                f"remaining."
+                f"Incorrect code. {remaining_attempts} "
+                "attempt(s) remaining."
             ),
             "error",
         )
@@ -338,7 +370,7 @@ def verify_magic_link(
     token: str,
     magic_token: str,
 ):
-    """Verify the emailed magic link."""
+    """Verify Candidate identity from the emailed link."""
 
     exam = _exam_by_token(token)
 
@@ -350,8 +382,8 @@ def verify_magic_link(
     if verification is None:
         flash(
             (
-                "That verification link is "
-                "invalid or has expired."
+                "That verification link is invalid "
+                "or has expired."
             ),
             "error",
         )
@@ -377,7 +409,9 @@ def exam_ready(token: str):
 
     verification = resolve_candidate_session(
         exam,
-        session.get(_access_session_key(exam)),
+        session.get(
+            _access_session_key(exam)
+        ),
     )
 
     if verification is None:
