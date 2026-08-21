@@ -5,7 +5,6 @@
 {% block content %}
   <section class="card auth-card">
     <span class="status-badge">Email verified</span>
-
     <h1>{{ exam.title }}</h1>
 
     <p>
@@ -54,11 +53,32 @@
       Once you start, the server timer cannot be paused or restarted.
     </div>
 
+    <div class="supervision-consent">
+      <h2>Camera recording notice</h2>
+
+      <p>
+        The webcam feed is normally processed only on this
+        device. If your face is not detected long enough to
+        create an integrity warning, MAU-SOAP records and
+        uploads a video-only clip from the beginning of the
+        absence until your face returns. The authenticated
+        Admin can view and download that clip together with
+        its timestamps and duration.
+      </p>
+
+      <p>
+        Uploaded evidence is automatically deleted after
+        30 days.
+      </p>
+    </div>
+
     <form
-      action="{{ url_for(
-        'candidate.start_exam',
-        token=exam.exam_link_token
-      ) }}"
+      action="{{
+        url_for(
+          'candidate.start_exam',
+          token=exam.exam_link_token
+        )
+      }}"
       method="post"
     >
       <input
@@ -66,6 +86,20 @@
         name="csrf_token"
         value="{{ csrf_token() }}"
       >
+
+      <label class="consent-row">
+        <input
+          type="checkbox"
+          name="supervision_consent"
+          value="yes"
+          required
+        >
+
+        <span>
+          I understand and consent to this examination
+          supervision and evidence recording.
+        </span>
+      </label>
 
       <button class="primary-button" type="submit">
         Start examination

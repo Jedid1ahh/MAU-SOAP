@@ -93,6 +93,12 @@ def _register_blueprints(app: Flask) -> None:
 def _register_commands(app: Flask) -> None:
     """Register maintenance commands on Flask's application CLI."""
 
-    from .cli import seed_db_command
+    from .cli import (
+        cleanup_supervision_evidence_command,
+        seed_db_command,
+    )
 
     app.cli.add_command(seed_db_command)
+    app.cli.add_command(
+        cleanup_supervision_evidence_command
+    )

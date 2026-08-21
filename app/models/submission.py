@@ -66,6 +66,10 @@ class Submission(TimestampMixin, db.Model):
     submission_reason: Mapped[str | None] = mapped_column(String(50))
     warn_count: Mapped[int] = mapped_column(default=0, server_default="0")
 
+    supervision_consent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
+
     exam: Mapped[Exam] = relationship(back_populates="submissions")
     result: Mapped[Result | None] = relationship(
         back_populates="submission",

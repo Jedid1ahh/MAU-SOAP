@@ -9,8 +9,13 @@
         <span class="eyebrow">
           Authenticated · Examination management
         </span>
+
         <h1>Admin dashboard</h1>
-        <p>Welcome, <strong>{{ current_user.email }}</strong>.</p>
+
+        <p>
+          Welcome,
+          <strong>{{ current_user.email }}</strong>.
+        </p>
       </div>
 
       <a
@@ -27,14 +32,19 @@
           <article class="card exam-card">
             <div class="card-heading">
               <span
-                class="status-badge {% if exam.is_locked %}status-locked{% endif %}"
+                class="status-badge
+                {% if exam.is_locked %}
+                  status-locked
+                {% endif %}"
               >
-                {{ "Locked" if exam.is_locked else "Editable" }}
+                {{
+                  "Locked"
+                  if exam.is_locked
+                  else "Editable"
+                }}
               </span>
 
-              <span class="muted-text">
-                {{ exam.questions|length }} question(s)
-              </span>
+              <span class="muted-text">{{ exam.questions|length }} question(s)</span>
             </div>
 
             <h2>{{ exam.title }}</h2>
@@ -47,34 +57,46 @@
             <dl class="metadata-list">
               <div>
                 <dt>Time limit</dt>
-                <dd>{{ exam.time_limit_minutes }} minutes</dd>
+                <dd>
+                  {{ exam.time_limit_minutes }}
+                  minutes
+                </dd>
               </div>
 
               <div>
                 <dt>Monitoring</dt>
                 <dd>
-                  {{ "Face presence" if exam.monitor_type.value == "face"
-                     else "Eye/gaze" }}
+                  {{
+                    "Face presence"
+                    if exam.monitor_type.value == "face"
+                    else "Eye/gaze"
+                  }}
                 </dd>
               </div>
             </dl>
 
             <a
               class="secondary-button"
-              href="{{ url_for('admin.exam_detail', exam_id=exam.id) }}"
+              href="{{
+                url_for(
+                  'admin.exam_detail',
+                  exam_id=exam.id
+                )
+              }}"
             >
               Manage examination
             </a>
           </article>
         {% endfor %}
       </div>
+
     {% else %}
       <section class="card empty-state">
         <h2>No examinations yet</h2>
 
         <p>
-          Create your first examination, configure monitoring,
-          and add questions.
+          Create your first examination,
+          configure monitoring, and add questions.
         </p>
 
         <a
@@ -85,5 +107,62 @@
         </a>
       </section>
     {% endif %}
+
+    <section
+      id="supervision-feed"
+      class="card supervision-feed"
+      data-events-url="{{
+        url_for('admin.supervision_events')
+      }}"
+      aria-live="polite"
+    >
+      <div class="card-heading">
+        <div>
+          <span class="eyebrow">
+            Live integrity feed
+          </span>
+
+          <h2>
+            Candidate supervision warnings
+          </h2>
+        </div>
+
+        <span
+          id="supervision-feed-status"
+          class="status-badge"
+        >
+          Connecting…
+        </span>
+      </div>
+
+      <p class="muted-text">
+        Face-absence alerts appear first.
+        Their protected evidence video becomes
+        available automatically when the
+        Candidate's face returns.
+      </p>
+
+      <div
+        id="supervision-event-list"
+        class="supervision-event-list"
+      >
+        <p
+          id="supervision-empty"
+          class="muted-text"
+        >
+          No warnings recorded yet.
+        </p>
+      </div>
+    </section>
+
+    <script
+      src="{{
+        url_for(
+          'static',
+          filename='js/admin_supervision.js'
+        )
+      }}"
+      defer
+    ></script>
   </section>
 {% endblock %}

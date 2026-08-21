@@ -13,6 +13,7 @@ from app.candidate.session_services import (
     FinalizedSubmissionError,
     finalize_expired_submission,
     finalize_submission,
+    finalize_warning_limit,
     remaining_seconds,
     resolve_submission_session,
     secrets_match,
@@ -31,12 +32,7 @@ from app.models import (
 )
 
 
-def _exam(
-    admin,
-    *,
-    token="phase-six-exam",
-    with_questions=True,
-):
+def _exam(admin, *, token="phase-six-exam", with_questions=True):
     exam = Exam(
         admin_id=admin.id,
         title="Distributed Systems",
@@ -48,7 +44,6 @@ def _exam(
         release_option=ReleaseOption.IMMEDIATE,
         exam_link_token=token,
     )
-
     db.session.add(exam)
     db.session.flush()
 
@@ -63,10 +58,7 @@ def _exam(
                     question_type=QuestionType.MCQ,
                     position=1,
                     marks=Decimal("2.00"),
-                    options={
-                        "A": "UDP",
-                        "B": "TCP",
-                    },
+                    options={"A": "UDP", "B": "TCP"},
                     correct_answer="B",
                 ),
                 Question(
@@ -110,9 +102,7 @@ def _verified_access(
         magic_token_hash=credential_digest(
             f"magic-{raw_token}"
         ),
-        session_token_hash=credential_digest(
-            raw_token
-        ),
+        session_token_hash=credential_digest(raw_token),
         verified_at=now,
         expires_at=now + timedelta(minutes=30),
     )
@@ -140,18 +130,11 @@ def _started_submission(
         candidate_name="Amina Bello",
         candidate_email="amina@gmail.com",
         responses={},
-        resume_token_hash=credential_digest(
-            raw_token
-        ),
-        started_at=(
-            started_at
-            or datetime.now(UTC)
-        ),
+        resume_token_hash=credential_digest(raw_token),
+        started_at=started_at or datetime.now(UTC),
         submitted_at=submitted_at,
         submission_reason=(
-            "manual"
-            if submitted_at
-            else None
+            "manual" if submitted_at else None
         ),
         warn_count=0,
     )
@@ -176,9 +159,38 @@ def test_start_requires_verified_access_and_questions(
     assert unauthorized.headers["Location"].endswith(
         f"/exam/{exam.exam_link_token}"
     )
+
     assert db.session.scalar(
         select(Submission)
     ) is None
+
+
+def test_start_requires_supervision_recording_consent(
+    client,
+    admin,
+):
+    exam = _exam(admin)
+    _verified_access(client, exam)
+
+    response = client.post(
+        f"/exam/{exam.exam_link_token}/start"
+    )
+
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith(
+        f"/exam/{exam.exam_link_token}/ready"
+    )
+
+    assert db.session.scalar(
+        select(Submission)
+    ) is None
+
+    ready = client.get(
+        response.headers["Location"]
+    )
+
+    assert b"Camera recording notice" in ready.data
+    assert b"supervision_consent" in ready.data
 
     empty_exam = _exam(
         admin,
@@ -200,6 +212,7 @@ def test_start_requires_verified_access_and_questions(
     assert empty.headers["Location"].endswith(
         f"/exam/{empty_exam.exam_link_token}/ready"
     )
+
     assert db.session.scalar(
         select(Submission)
     ) is None
@@ -210,18 +223,20 @@ def test_start_creates_one_idempotent_attempt_and_locks_exam(
     admin,
 ):
     exam = _exam(admin)
+    verification = _verified_access(client, exam)
 
-    verification = _verified_access(
-        client,
-        exam,
-    )
+    consent = {
+        "supervision_consent": "yes",
+    }
 
     first = client.post(
-        f"/exam/{exam.exam_link_token}/start"
+        f"/exam/{exam.exam_link_token}/start",
+        data=consent,
     )
 
     second = client.post(
-        f"/exam/{exam.exam_link_token}/start"
+        f"/exam/{exam.exam_link_token}/start",
+        data=consent,
     )
 
     submission = db.session.scalar(
@@ -232,6 +247,7 @@ def test_start_creates_one_idempotent_attempt_and_locks_exam(
     assert first.headers["Location"].endswith(
         f"/exam/{exam.exam_link_token}/session"
     )
+
     assert second.status_code == 302
 
     assert db.session.scalar(
@@ -276,7 +292,8 @@ def test_different_verified_token_cannot_claim_existing_attempt(
     )
 
     client.post(
-        f"/exam/{exam.exam_link_token}/start"
+        f"/exam/{exam.exam_link_token}/start",
+        data={"supervision_consent": "yes"},
     )
 
     _verified_access(
@@ -286,7 +303,8 @@ def test_different_verified_token_cannot_claim_existing_attempt(
     )
 
     response = client.post(
-        f"/exam/{exam.exam_link_token}/start"
+        f"/exam/{exam.exam_link_token}/start",
+        data={"supervision_consent": "yes"},
     )
 
     assert response.status_code == 302
@@ -329,7 +347,7 @@ def test_session_pages_require_matching_started_token(
     assert questions.status_code == 403
 
     assert questions.get_json() == {
-        "error": "Candidate session required."
+        "error": "Candidate session required.",
     }
 
     assert timing.status_code == 403
@@ -342,14 +360,11 @@ def test_question_endpoint_never_exposes_grading_answers(
     admin,
 ):
     exam = _exam(admin)
-
-    _verified_access(
-        client,
-        exam,
-    )
+    _verified_access(client, exam)
 
     client.post(
-        f"/exam/{exam.exam_link_token}/start"
+        f"/exam/{exam.exam_link_token}/start",
+        data={"supervision_consent": "yes"},
     )
 
     response = client.get(
@@ -378,6 +393,7 @@ def test_question_endpoint_never_exposes_grading_answers(
     assert "correct_answer" not in response.get_data(
         as_text=True
     )
+    assert '"B"' in response.get_data(as_text=True)
     assert "agreement" not in response.get_data(
         as_text=True
     )
@@ -389,11 +405,7 @@ def test_server_time_endpoint_uses_started_at_not_browser_input(
     monkeypatch,
 ):
     exam = _exam(admin)
-
-    _verified_access(
-        client,
-        exam,
-    )
+    _verified_access(client, exam)
 
     started = datetime(
         2026,
@@ -427,8 +439,9 @@ def test_server_time_endpoint_uses_started_at_not_browser_input(
 
     assert response.status_code == 200
     assert payload["remaining_seconds"] == 1_375
-    assert payload["deadline"] == (
-        "2026-08-17T10:30:00+00:00"
+    assert (
+        payload["deadline"]
+        == "2026-08-17T10:30:00+00:00"
     )
     assert payload["submitted"] is False
     assert payload["reason"] is None
@@ -441,11 +454,7 @@ def test_expiry_finalizes_once_and_rejects_question_loading(
     monkeypatch,
 ):
     exam = _exam(admin)
-
-    _verified_access(
-        client,
-        exam,
-    )
+    _verified_access(client, exam)
 
     started = datetime(
         2026,
@@ -486,14 +495,12 @@ def test_expiry_finalizes_once_and_rejects_question_loading(
     }
 
     assert session_page.status_code == 302
-
     assert session_page.headers["Location"].endswith(
         f"/exam/{exam.exam_link_token}/submitted"
     )
 
     assert timing.get_json()["remaining_seconds"] == 0
     assert submission.is_finalized is True
-
     assert (
         submission.submission_reason
         == "time_expired"
@@ -505,14 +512,11 @@ def test_manual_submit_stores_only_known_responses_and_is_final(
     admin,
 ):
     exam = _exam(admin)
-
-    _verified_access(
-        client,
-        exam,
-    )
+    _verified_access(client, exam)
 
     client.post(
-        f"/exam/{exam.exam_link_token}/start"
+        f"/exam/{exam.exam_link_token}/start",
+        data={"supervision_consent": "yes"},
     )
 
     question_ids = [
@@ -539,7 +543,6 @@ def test_manual_submit_stores_only_known_responses_and_is_final(
     )
 
     assert response.status_code == 302
-
     assert response.headers["Location"].endswith(
         f"/exam/{exam.exam_link_token}/submitted"
     )
@@ -568,7 +571,7 @@ def test_manual_submit_stores_only_known_responses_and_is_final(
     second_write = client.post(
         f"/exam/{exam.exam_link_token}/session/submit",
         data={
-            f"question_{question_ids[0]}": "A"
+            f"question_{question_ids[0]}": "A",
         },
     )
 
@@ -588,9 +591,7 @@ def test_manual_submit_stores_only_known_responses_and_is_final(
     assert second_write.status_code == 409
 
     assert (
-        submission.responses[
-            str(question_ids[0])
-        ]
+        submission.responses[str(question_ids[0])]
         == "B"
     )
 
@@ -610,14 +611,11 @@ def test_submit_rejects_invalid_answer_payload(
     answer,
 ):
     exam = _exam(admin)
-
-    _verified_access(
-        client,
-        exam,
-    )
+    _verified_access(client, exam)
 
     client.post(
-        f"/exam/{exam.exam_link_token}/start"
+        f"/exam/{exam.exam_link_token}/start",
+        data={"supervision_consent": "yes"},
     )
 
     mcq_id = exam.questions[0].id
@@ -625,7 +623,7 @@ def test_submit_rejects_invalid_answer_payload(
     response = client.post(
         f"/exam/{exam.exam_link_token}/session/submit",
         data={
-            f"question_{mcq_id}": answer
+            f"question_{mcq_id}": answer,
         },
     )
 
@@ -649,7 +647,6 @@ def test_submit_requires_started_session(
     )
 
     assert response.status_code == 302
-
     assert response.headers["Location"].endswith(
         f"/exam/{exam.exam_link_token}"
     )
@@ -661,11 +658,7 @@ def test_expired_manual_payload_is_not_accepted(
     monkeypatch,
 ):
     exam = _exam(admin)
-
-    _verified_access(
-        client,
-        exam,
-    )
+    _verified_access(client, exam)
 
     started = datetime(
         2026,
@@ -689,7 +682,7 @@ def test_expired_manual_payload_is_not_accepted(
     response = client.post(
         f"/exam/{exam.exam_link_token}/session/submit",
         data={
-            f"question_{exam.questions[0].id}": "B"
+            f"question_{exam.questions[0].id}": "B",
         },
     )
 
@@ -707,11 +700,7 @@ def test_start_of_finalized_matching_attempt_opens_receipt(
     admin,
 ):
     exam = _exam(admin)
-
-    verification = _verified_access(
-        client,
-        exam,
-    )
+    verification = _verified_access(client, exam)
 
     submitted_at = datetime.now(UTC)
 
@@ -724,7 +713,8 @@ def test_start_of_finalized_matching_attempt_opens_receipt(
     )
 
     response = client.post(
-        f"/exam/{exam.exam_link_token}/start"
+        f"/exam/{exam.exam_link_token}/start",
+        data={"supervision_consent": "yes"},
     )
 
     assert (
@@ -733,7 +723,6 @@ def test_start_of_finalized_matching_attempt_opens_receipt(
     )
 
     assert response.status_code == 302
-
     assert response.headers["Location"].endswith(
         f"/exam/{exam.exam_link_token}/submitted"
     )
@@ -760,25 +749,25 @@ def test_session_service_guards_and_rounding(
         started_at=started,
     )
 
-    assert resolve_submission_session(
-        exam,
-        None,
-    ) is None
+    assert (
+        resolve_submission_session(exam, None)
+        is None
+    )
 
-    assert resolve_submission_session(
-        exam,
-        "wrong-token",
-    ) is None
+    assert (
+        resolve_submission_session(
+            exam,
+            "wrong-token",
+        )
+        is None
+    )
 
-    assert secrets_match(
-        "same",
-        "same",
-    ) is True
+    assert secrets_match("same", "same") is True
 
-    assert secrets_match(
-        "same",
-        "different",
-    ) is False
+    assert (
+        secrets_match("same", "different")
+        is False
+    )
 
     assert submission_deadline(
         submission
@@ -796,17 +785,18 @@ def test_session_service_guards_and_rounding(
         lambda: started + timedelta(minutes=1),
     )
 
-    assert finalize_expired_submission(
-        submission
-    ) is False
-
-    submission.submitted_at = (
-        started + timedelta(minutes=1)
+    assert (
+        finalize_expired_submission(submission)
+        is False
     )
 
-    assert finalize_expired_submission(
-        submission
-    ) is True
+    finalized_at = started + timedelta(minutes=1)
+    submission.submitted_at = finalized_at
+
+    assert (
+        finalize_expired_submission(submission)
+        is True
+    )
 
     with pytest.raises(
         FinalizedSubmissionError
@@ -816,6 +806,61 @@ def test_session_service_guards_and_rounding(
             {"1": "answer"},
         )
 
+
+def test_warning_limit_service_finalizes_active_and_expired_attempts(
+    admin,
+):
+    active_exam = _exam(
+        admin,
+        token="warning-limit-active",
+    )
+    active = _started_submission(active_exam)
+
+    finalize_warning_limit(
+        active,
+        {"1": "saved answer"},
+    )
+
+    assert active.responses == {
+        "1": "saved answer",
+    }
+    assert (
+        active.last_saved_at ==
+        active.submitted_at
+    )
+    assert (
+        active.submission_reason ==
+        "warning_limit"
+    )
+
+    finalize_warning_limit(active, {})
+
+    assert active.responses == {
+        "1": "saved answer",
+    }
+
+    expired_exam = _exam(
+        admin,
+        token="warning-limit-expired",
+    )
+    expired = _started_submission(
+        expired_exam,
+        raw_token="expired-warning-token",
+        started_at=(
+            datetime.now(UTC) -
+            timedelta(minutes=31)
+        ),
+    )
+
+    finalize_warning_limit(
+        expired,
+        {"1": "too late"},
+    )
+
+    assert (
+        expired.submission_reason ==
+        "time_expired"
+    )
 
 def test_start_service_recovers_matching_concurrent_insert(
     app,
@@ -869,6 +914,7 @@ def test_start_service_recovers_matching_concurrent_insert(
 
     def hide_first_query(statement):
         nonlocal calls
+
         calls += 1
 
         if calls == 1:
