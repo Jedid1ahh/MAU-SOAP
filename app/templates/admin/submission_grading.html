@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block title %}Grade {{ submission.candidate_name }} | MAU-SOAP{% endblock %}
+
+{% block content %}
+  <section class="dashboard-shell">
+    <div class="page-heading">
+      <div>
+        <span class="status-badge {% if result.status.value != 'complete' %}status-locked{% endif %}">
+          {{ result.status.value|replace('_', ' ')|title }}
+        </span>
+        <h1>{{ submission.candidate_name }}</h1>
+        <p>{{ submission.candidate_email }} · {{ exam.course_code }}</p>
+      </div>
+      <a class="secondary-button" href="{{ url_for('admin.grading_queue') }}">
+        Back to pending grading
+      </a>
+    </div>
+
+    <section class="card questions-card">
+      <div class="card-heading">
+        <div>
+          <span class="eyebrow">Current score</span>
+          <h2>{{ result.marks_obtained }} / {{ result.total_marks }}</h2>
+        </div>
+        <strong>{{ result.percentage }}%</strong>
+      </div>
+      <p class="muted-text">
+        The score becomes complete when every open-ended response has an
+        Admin-assigned mark. Result release is handled in Phase 10.
+      </p>
+    </section>
+
+    <section class="card questions-card">
+      <h2>Candidate responses</h2>
+      <ol class="question-list">
+        {% for row in grading_rows %}
+          <li>
+            <article class="question-item">
+              <div class="question-content">
+                <div class="question-meta">
+                  <span>{{ row.question.question_type.value|replace('_', ' ')|title }}</span>
+                  <span>{{ row.question.marks }} mark(s)</span>
+                </div>
+                <h3>{{ row.question.question_text }}</h3>
+                <p class="pre-line">
+                  <strong>Candidate response:</strong>
+                  {{ row.response if row.response else "No answer submitted" }}
+                </p>
+
+                {% if row.grade.awarded_marks is not none %}
+                  <div class="flash flash-success">
+                    Awarded {{ row.grade.awarded_marks }} / {{ row.question.marks }}
+                    · {{ row.grade.graded_by.value|title }}
+                  </div>
+                  {% if row.grade.feedback %}
+                    <p class="pre-line">
+                      <strong>Feedback:</strong> {{ row.grade.feedback }}
+                    </p>
+                  {% endif %}
+                {% else %}
+                  <form
+                    action="{{ url_for('admin.grade_open_answer', submission_id=submission.id, grade_id=row.grade.id) }}"
+                    method="post"
+                  >
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="form-group">
+                      <label for="awarded_marks_{{ row.grade.id }}">
+                        Awarded marks (maximum {{ row.question.marks }})
+                      </label>
+                      <input
+                        id="awarded_marks_{{ row.grade.id }}"
+                        name="awarded_marks"
+                        type="number"
+                        min="0"
+                        max="{{ row.question.marks }}"
+                        step="0.01"
+                        required
+                        {% if target_grade_id == row.grade.id and form.awarded_marks.data is not none %}
+                          value="{{ form.awarded_marks.data }}"
+                        {% endif %}
+                      >
+                      {% if target_grade_id == row.grade.id %}
+                        {% for error in form.awarded_marks.errors %}
+                          <span class="field-error">{{ error }}</span>
+                        {% endfor %}
+                      {% endif %}
+                    </div>
+                    <div class="form-group">
+                      <label for="feedback_{{ row.grade.id }}">
+                        Feedback (optional)
+                      </label>
+                      <textarea
+                        id="feedback_{{ row.grade.id }}"
+                        name="feedback"
+                        rows="3"
+                        maxlength="5000"
+                      >{% if target_grade_id == row.grade.id %}{{ form.feedback.data or "" }}{% endif %}</textarea>
+                      {% if target_grade_id == row.grade.id %}
+                        {% for error in form.feedback.errors %}
+                          <span class="field-error">{{ error }}</span>
+                        {% endfor %}
+                      {% endif %}
+                    </div>
+                    <button class="primary-button button-auto" type="submit">
+                      Save mark
+                    </button>
+                  </form>
+                {% endif %}
+              </div>
+            </article>
+          </li>
+        {% endfor %}
+      </ol>
+    </section>
+  </section>
+{% endblock %}

@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from app.extensions import db
+from app.grading import grade_submission
 from app.models import Exam, Submission, VerificationToken
 
 from .services import aware_utc, credential_digest, utc_now
@@ -120,11 +121,13 @@ def finalize_expired_submission(submission: Submission) -> bool:
     """Finalize an expired attempt without accepting late browser changes."""
 
     if submission.is_finalized:
+        grade_submission(submission)
         return True
     if remaining_seconds(submission) > 0:
         return False
     submission.submitted_at = utc_now()
     submission.submission_reason = "time_expired"
+    grade_submission(submission)
     return True
 
 
@@ -161,6 +164,7 @@ def finalize_submission(
     submission.last_saved_at = submitted_at
     submission.submitted_at = submitted_at
     submission.submission_reason = "manual"
+    grade_submission(submission)
 
 
 def finalize_warning_limit(
@@ -180,3 +184,4 @@ def finalize_warning_limit(
     submission.last_saved_at = submitted_at
     submission.submitted_at = submitted_at
     submission.submission_reason = "warning_limit"
+    grade_submission(submission)

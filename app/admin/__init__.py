@@ -4,4 +4,9 @@ from flask import Blueprint
 
 admin_bp = Blueprint("admin", __name__)
 
-from . import exam_routes, routes, supervision_routes  # noqa: E402, F401
+from . import (  # noqa: E402, F401
+    exam_routes,
+    grading_routes,
+    routes,
+    supervision_routes,
+)

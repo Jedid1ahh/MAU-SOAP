@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}Pending grading | MAU-SOAP{% endblock %}
+
+{% block content %}
+  <section class="dashboard-shell">
+    <div class="page-heading">
+      <div>
+        <span class="eyebrow">Phase 9 · Manual review</span>
+        <h1>Pending grading</h1>
+        <p>Review open-ended Candidate responses and assign their marks.</p>
+      </div>
+      <a class="secondary-button" href="{{ url_for('admin.index') }}">
+        Back to dashboard
+      </a>
+    </div>
+
+    {% if submissions %}
+      <div class="exam-grid">
+        {% for submission in submissions %}
+          <article class="card exam-card">
+            <div class="card-heading">
+              <span class="status-badge status-locked">Pending review</span>
+              <span class="muted-text">
+                {{ pending_counts[submission.id] }} answer(s)
+              </span>
+            </div>
+            <h2>{{ submission.candidate_name }}</h2>
+            <p>{{ submission.candidate_email }}</p>
+            <dl class="metadata-list metadata-list-stacked">
+              <div>
+                <dt>Examination</dt>
+                <dd>{{ submission.exam.title }}</dd>
+              </div>
+              <div>
+                <dt>Course</dt>
+                <dd>{{ submission.exam.course_code }}</dd>
+              </div>
+              <div>
+                <dt>Submitted</dt>
+                <dd>{{ submission.submitted_at }}</dd>
+              </div>
+            </dl>
+            <a
+              class="secondary-button"
+              href="{{ url_for('admin.grade_submission_view', submission_id=submission.id) }}"
+            >
+              Review responses
+            </a>
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <section class="card empty-state">
+        <h2>No responses are awaiting review</h2>
+        <p>
+          Submissions containing open-ended questions will appear here
+          automatically after they are finalized.
+        </p>
+      </section>
+    {% endif %}
+  </section>
+{% endblock %}
