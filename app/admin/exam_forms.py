@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from decimal import Decimal
 
 from flask_wtf import FlaskForm
 from wtforms import (
     BooleanField,
+    DateTimeLocalField,
     DecimalField,
     IntegerField,
     SelectField,
@@ -22,7 +24,7 @@ from wtforms.validators import (
     Optional,
 )
 
-from app.models import MonitorType, QuestionType
+from app.models import MonitorType, QuestionType, ReleaseOption
 
 
 class ExamForm(FlaskForm):
@@ -63,7 +65,50 @@ class ExamForm(FlaskForm):
         ],
         validators=[DataRequired()],
     )
+    release_option = SelectField(
+        "Result release",
+        choices=[
+            (
+                ReleaseOption.IMMEDIATE.value,
+                "Immediately after grading",
+            ),
+            (
+                ReleaseOption.SCHEDULED.value,
+                "At a scheduled UTC time",
+            ),
+        ],
+        default=ReleaseOption.IMMEDIATE.value,
+        validators=[DataRequired()],
+    )
+    scheduled_release_at = DateTimeLocalField(
+        "Scheduled release date and time (UTC)",
+        format="%Y-%m-%dT%H:%M",
+        validators=[Optional()],
+    )
     submit = SubmitField("Save examination")
+
+    def validate(self, extra_validators=None) -> bool:
+        """Require a future UTC timestamp for scheduled result release."""
+
+        is_valid = super().validate(extra_validators)
+        if not is_valid:
+            return False
+
+        if self.release_option.data == ReleaseOption.SCHEDULED.value:
+            if self.scheduled_release_at.data is None:
+                self.scheduled_release_at.errors.append(
+                    "Choose when the result should be released."
+                )
+                return False
+
+            current_utc = datetime.now(UTC).replace(tzinfo=None)
+            if self.scheduled_release_at.data <= current_utc:
+                self.scheduled_release_at.errors.append(
+                    "Scheduled release must be in the future."
+                )
+                return False
+
+        return True
 
 
 class QuestionForm(FlaskForm):
@@ -87,7 +132,10 @@ class QuestionForm(FlaskForm):
         places=2,
         validators=[
             DataRequired(),
-            NumberRange(min=Decimal("0.01"), max=Decimal("999999.99")),
+            NumberRange(
+                min=Decimal("0.01"),
+                max=Decimal("999999.99"),
+            ),
         ],
     )
 
@@ -120,7 +168,9 @@ class QuestionForm(FlaskForm):
         "Correct short answer",
         validators=[Optional(), Length(max=5000)],
     )
-    short_answer_case_sensitive = BooleanField("Answer is case-sensitive")
+    short_answer_case_sensitive = BooleanField(
+        "Answer is case-sensitive"
+    )
     short_answer_trim_whitespace = BooleanField(
         "Ignore leading and trailing spaces",
         default=True,
@@ -145,16 +195,20 @@ class QuestionForm(FlaskForm):
             }
 
             if not options["A"]:
-                self.mcq_option_a.errors.append("Option A is required.")
+                self.mcq_option_a.errors.append(
+                    "Option A is required."
+                )
                 is_valid = False
 
             if not options["B"]:
-                self.mcq_option_b.errors.append("Option B is required.")
+                self.mcq_option_b.errors.append(
+                    "Option B is required."
+                )
                 is_valid = False
 
-            if not self.correct_option.data or not options.get(
-                self.correct_option.data,
-                "",
+            if (
+                not self.correct_option.data
+                or not options.get(self.correct_option.data, "")
             ):
                 self.correct_option.errors.append(
                     "Select a correct option that contains an answer."

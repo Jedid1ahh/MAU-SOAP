@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Your result | MAU-SOAP{% endblock %}
+
+{% block content %}
+  <section class="dashboard-shell">
+    <div class="page-heading">
+      <div>
+        <span class="status-badge">Result released</span>
+        <h1>{{ exam.title }}</h1>
+        <p>{{ submission.candidate_name }} · {{ submission.candidate_email }}</p>
+      </div>
+    </div>
+
+    <section class="card questions-card">
+      <div class="card-heading">
+        <div>
+          <span class="eyebrow">Final score</span>
+          <h2>{{ result.marks_obtained }} / {{ result.total_marks }}</h2>
+        </div>
+        <strong>{{ result.percentage }}%</strong>
+      </div>
+      <dl class="metadata-list">
+        <div><dt>Course</dt><dd>{{ exam.course_code }}</dd></div>
+        <div><dt>Released</dt><dd>{{ result.released_at }}</dd></div>
+      </dl>
+    </section>
+
+    <section class="card questions-card">
+      <h2>Response breakdown</h2>
+      <ol class="question-list">
+        {% for row in result_rows %}
+          <li>
+            <article class="question-item">
+              <div class="question-content">
+                <div class="question-meta">
+                  <span>{{ row.question.question_type.value|replace('_', ' ')|title }}</span>
+                  <span>
+                    {{ row.grade.awarded_marks }} / {{ row.question.marks }} mark(s)
+                  </span>
+                </div>
+                <h3>{{ row.question.question_text }}</h3>
+                <p class="pre-line">
+                  <strong>Your response:</strong>
+                  {{ row.response if row.response else "No answer submitted" }}
+                </p>
+                {% if row.grade.feedback %}
+                  <div class="flash flash-info">
+                    <strong>Admin feedback:</strong> {{ row.grade.feedback }}
+                  </div>
+                {% endif %}
+              </div>
+            </article>
+          </li>
+        {% endfor %}
+      </ol>
+    </section>
+  </section>
+{% endblock %}
