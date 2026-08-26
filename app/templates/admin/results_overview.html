@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block title %}Candidate results | MAU-SOAP{% endblock %}
+
+{% block content %}
+  <section class="dashboard-shell">
+    <div class="page-heading">
+      <div>
+        <span class="eyebrow">Phase 10 · Result release</span>
+        <h1>Candidate results</h1>
+        <p>Monitor grading completion and Candidate result availability.</p>
+      </div>
+      <a class="secondary-button" href="{{ url_for('admin.index') }}">
+        Back to dashboard
+      </a>
+    </div>
+
+    {% if submissions %}
+      <div class="exam-grid">
+        {% for submission in submissions %}
+          {% set result = submission.result %}
+          <article class="card exam-card">
+            <div class="card-heading">
+              {% if result.is_released %}
+                <span class="status-badge">Released</span>
+              {% elif result.status.value == "pending_manual_review" %}
+                <span class="status-badge status-locked">
+                  Pending grading
+                </span>
+              {% else %}
+                <span class="status-badge status-locked">
+                  Awaiting release
+                </span>
+              {% endif %}
+              <span class="muted-text">{{ result.percentage }}%</span>
+            </div>
+
+            <h2>{{ submission.candidate_name }}</h2>
+            <p>{{ submission.candidate_email }}</p>
+
+            <dl class="metadata-list metadata-list-stacked">
+              <div>
+                <dt>Examination</dt>
+                <dd>
+                  {{ submission.exam.course_code }} —
+                  {{ submission.exam.title }}
+                </dd>
+              </div>
+              <div>
+                <dt>Score</dt>
+                <dd>
+                  {{ result.marks_obtained }} /
+                  {{ result.total_marks }}
+                </dd>
+              </div>
+              <div>
+                <dt>Release policy</dt>
+                <dd>
+                  {{ submission.exam.release_option.value|title }}
+                  {% if submission.exam.scheduled_release_at %}
+                    · {{ submission.exam.scheduled_release_at }} UTC
+                  {% endif %}
+                </dd>
+              </div>
+              {% if result.released_at %}
+                <div>
+                  <dt>Released</dt>
+                  <dd>{{ result.released_at }}</dd>
+                </div>
+              {% endif %}
+            </dl>
+
+            <div class="item-actions">
+              <a
+                class="secondary-button"
+                href="{{ url_for(
+                  'admin.grade_submission_view',
+                  submission_id=submission.id
+                ) }}"
+              >
+                View grading
+              </a>
+
+              {% if not result.is_released and result.status.value == "complete" %}
+                <form
+                  action="{{ url_for(
+                    'admin.release_result',
+                    submission_id=submission.id
+                  ) }}"
+                  method="post"
+                  onsubmit="return confirm(
+                    'Release this result to the Candidate now?'
+                  );"
+                >
+                  <input
+                    type="hidden"
+                    name="csrf_token"
+                    value="{{ csrf_token() }}"
+                  >
+                  <button
+                    class="primary-button button-auto"
+                    type="submit"
+                  >
+                    Release now
+                  </button>
+                </form>
+              {% endif %}
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <section class="card empty-state">
+        <h2>No finalized submissions yet</h2>
+        <p>
+          Candidate results will appear here after examinations are submitted.
+        </p>
+      </section>
+    {% endif %}
+  </section>
+{% endblock %}

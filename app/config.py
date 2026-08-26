@@ -29,9 +29,19 @@ def _database_url() -> str | None:
         return None
 
     if url.startswith("postgres://"):
-        return url.replace("postgres://", "postgresql+psycopg://", 1)
+        return url.replace(
+            "postgres://",
+            "postgresql+psycopg://",
+            1,
+        )
+
     if url.startswith("postgresql://"):
-        return url.replace("postgresql://", "postgresql+psycopg://", 1)
+        return url.replace(
+            "postgresql://",
+            "postgresql+psycopg://",
+            1,
+        )
+
     return url
 
 
@@ -42,11 +52,19 @@ class BaseConfig:
     SQLALCHEMY_DATABASE_URI = _database_url()
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
-    CANDIDATE_EMAIL_DOMAIN = os.getenv("CANDIDATE_EMAIL_DOMAIN", "gmail.com")
+    CANDIDATE_EMAIL_DOMAIN = os.getenv(
+        "CANDIDATE_EMAIL_DOMAIN",
+        "mau.edu.ng",
+    )
 
     DEFAULT_ADMIN_EMAIL = os.getenv("DEFAULT_ADMIN_EMAIL")
-    DEFAULT_ADMIN_PASSWORD = os.getenv("DEFAULT_ADMIN_PASSWORD")
-    SEED_DUMMY_EXAM = _as_bool("SEED_DUMMY_EXAM", default=True)
+    DEFAULT_ADMIN_PASSWORD = os.getenv(
+        "DEFAULT_ADMIN_PASSWORD"
+    )
+    SEED_DUMMY_EXAM = _as_bool(
+        "SEED_DUMMY_EXAM",
+        default=True,
+    )
 
     MAIL_SERVER = os.getenv("MAIL_SERVER", "localhost")
     MAIL_PORT = int(os.getenv("MAIL_PORT", "25"))
@@ -55,30 +73,52 @@ class BaseConfig:
     MAIL_USERNAME = os.getenv("MAIL_USERNAME")
     MAIL_PASSWORD = os.getenv("MAIL_PASSWORD")
     MAIL_DEFAULT_SENDER = (
-        os.getenv("MAIL_DEFAULT_SENDER") or "noreply@mau-soap.local"
+        os.getenv("MAIL_DEFAULT_SENDER")
+        or "noreply@mau-soap.local"
     )
     MAIL_SUPPRESS_SEND = _as_bool("MAIL_SUPPRESS_SEND")
 
     PASSWORD_RESET_MAX_AGE_MINUTES = int(
-        os.getenv("PASSWORD_RESET_MAX_AGE_MINUTES", "30")
+        os.getenv(
+            "PASSWORD_RESET_MAX_AGE_MINUTES",
+            "30",
+        )
     )
     CANDIDATE_VERIFICATION_MAX_AGE_MINUTES = int(
-        os.getenv("CANDIDATE_VERIFICATION_MAX_AGE_MINUTES", "10")
+        os.getenv(
+            "CANDIDATE_VERIFICATION_MAX_AGE_MINUTES",
+            "10",
+        )
     )
     CANDIDATE_SESSION_MAX_AGE_MINUTES = int(
-        os.getenv("CANDIDATE_SESSION_MAX_AGE_MINUTES", "30")
+        os.getenv(
+            "CANDIDATE_SESSION_MAX_AGE_MINUTES",
+            "30",
+        )
     )
 
-    SUPERVISION_EVIDENCE_DIR = os.getenv("SUPERVISION_EVIDENCE_DIR")
+    SUPERVISION_EVIDENCE_DIR = os.getenv(
+        "SUPERVISION_EVIDENCE_DIR"
+    )
     SUPERVISION_EVIDENCE_MAX_BYTES = int(
-        os.getenv("SUPERVISION_EVIDENCE_MAX_BYTES", str(25 * 1024 * 1024))
+        os.getenv(
+            "SUPERVISION_EVIDENCE_MAX_BYTES",
+            str(25 * 1024 * 1024),
+        )
     )
     SUPERVISION_EVIDENCE_MAX_DURATION_SECONDS = int(
-        os.getenv("SUPERVISION_EVIDENCE_MAX_DURATION_SECONDS", "3600")
+        os.getenv(
+            "SUPERVISION_EVIDENCE_MAX_DURATION_SECONDS",
+            "3600",
+        )
     )
     SUPERVISION_EVIDENCE_RETENTION_DAYS = int(
-        os.getenv("SUPERVISION_EVIDENCE_RETENTION_DAYS", "30")
+        os.getenv(
+            "SUPERVISION_EVIDENCE_RETENTION_DAYS",
+            "30",
+        )
     )
+
     PERMANENT_SESSION_LIFETIME = timedelta(minutes=30)
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
@@ -91,7 +131,10 @@ class DevelopmentConfig(BaseConfig):
     """Local developer settings."""
 
     DEBUG = True
-    MAIL_SUPPRESS_SEND = _as_bool("MAIL_SUPPRESS_SEND", default=True)
+    MAIL_SUPPRESS_SEND = _as_bool(
+        "MAIL_SUPPRESS_SEND",
+        default=True,
+    )
 
 
 class TestingConfig(BaseConfig):
@@ -99,14 +142,16 @@ class TestingConfig(BaseConfig):
 
     TESTING = True
     SECRET_KEY = "phase-1-test-secret"
-    SQLALCHEMY_DATABASE_URI = "sqlite+pysqlite:///:memory:"
+    SQLALCHEMY_DATABASE_URI = (
+        "sqlite+pysqlite:///:memory:"
+    )
     MAIL_SUPPRESS_SEND = True
     MAIL_DEFAULT_SENDER = "noreply@mau-soap.test"
     WTF_CSRF_ENABLED = False
 
 
 class ProductionConfig(BaseConfig):
-    """Security-oriented defaults for the future production deployment."""
+    """Security-oriented defaults for production deployment."""
 
     DEBUG = False
     SESSION_COOKIE_SECURE = True
@@ -121,14 +166,20 @@ CONFIG_BY_NAME = {
 }
 
 
-def validate_configuration(config: Mapping[str, Any]) -> None:
+def validate_configuration(
+    config: Mapping[str, Any],
+) -> None:
     """Fail early when a required setting is missing or unsafe."""
 
     missing = [
         setting
-        for setting in ("SECRET_KEY", "SQLALCHEMY_DATABASE_URI")
+        for setting in (
+            "SECRET_KEY",
+            "SQLALCHEMY_DATABASE_URI",
+        )
         if not config.get(setting)
     ]
+
     if missing:
         names = ", ".join(missing)
         raise RuntimeError(
@@ -136,34 +187,52 @@ def validate_configuration(config: Mapping[str, Any]) -> None:
             "Copy .env.example to .env and provide real values."
         )
 
-    domain = str(config.get("CANDIDATE_EMAIL_DOMAIN", "")).strip()
+    domain = str(
+        config.get("CANDIDATE_EMAIL_DOMAIN", "")
+    ).strip()
+
     if not domain or "@" in domain:
         raise RuntimeError(
-            "CANDIDATE_EMAIL_DOMAIN must be a bare domain such as gmail.com."
+            "CANDIDATE_EMAIL_DOMAIN must be a bare "
+            "domain such as mau.edu.ng."
         )
 
-    if int(config.get("SUPERVISION_EVIDENCE_MAX_BYTES", 0)) <= 0:
+    if (
+        int(
+            config.get(
+                "SUPERVISION_EVIDENCE_MAX_BYTES",
+                0,
+            )
+        )
+        <= 0
+    ):
         raise RuntimeError(
             "SUPERVISION_EVIDENCE_MAX_BYTES must be positive."
         )
 
-    if int(
-        config.get(
-            "SUPERVISION_EVIDENCE_MAX_DURATION_SECONDS",
-            0,
+    if (
+        int(
+            config.get(
+                "SUPERVISION_EVIDENCE_MAX_DURATION_SECONDS",
+                0,
+            )
         )
-    ) <= 0:
+        <= 0
+    ):
         raise RuntimeError(
             "SUPERVISION_EVIDENCE_MAX_DURATION_SECONDS "
             "must be positive."
         )
 
-    if int(
-        config.get(
-            "SUPERVISION_EVIDENCE_RETENTION_DAYS",
-            0,
+    if (
+        int(
+            config.get(
+                "SUPERVISION_EVIDENCE_RETENTION_DAYS",
+                0,
+            )
         )
-    ) <= 0:
+        <= 0
+    ):
         raise RuntimeError(
             "SUPERVISION_EVIDENCE_RETENTION_DAYS "
             "must be positive."

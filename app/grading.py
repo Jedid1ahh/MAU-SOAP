@@ -16,6 +16,7 @@ from app.models import (
     Submission,
     User,
 )
+from app.result_release import synchronize_result_release
 
 MARK_PRECISION = Decimal("0.01")
 
@@ -106,6 +107,7 @@ def recompute_result(submission: Submission) -> Result:
         if every_question_graded
         else ResultStatus.PENDING_MANUAL_REVIEW
     )
+    synchronize_result_release(result)
     return result
 
 

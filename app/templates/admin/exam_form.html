@@ -27,10 +27,12 @@
 
         <div class="form-group">
           {{ form.course_code.label }}
-          {{ form.course_code(
-            autocomplete="off",
-            placeholder="CSC 301"
-          ) }}
+          {{
+            form.course_code(
+              autocomplete="off",
+              placeholder="CSC 301"
+            )
+          }}
 
           {% for error in form.course_code.errors %}
             <span class="field-error">{{ error }}</span>
@@ -48,7 +50,12 @@
 
         <div class="form-group">
           {{ form.time_limit_minutes.label }}
-          {{ form.time_limit_minutes(min="1", max="1440") }}
+          {{
+            form.time_limit_minutes(
+              min="1",
+              max="1440"
+            )
+          }}
 
           {% for error in form.time_limit_minutes.errors %}
             <span class="field-error">{{ error }}</span>
@@ -64,13 +71,40 @@
           {% endfor %}
         </div>
 
+        <div class="form-group">
+          {{ form.release_option.label }}
+          {{ form.release_option() }}
+
+          {% for error in form.release_option.errors %}
+            <span class="field-error">{{ error }}</span>
+          {% endfor %}
+        </div>
+
+        <div class="form-group">
+          {{ form.scheduled_release_at.label }}
+          {{ form.scheduled_release_at() }}
+
+          <span class="muted-text">
+            Required only for scheduled release.
+            Enter the time in UTC.
+          </span>
+
+          {% for error in form.scheduled_release_at.errors %}
+            <span class="field-error">{{ error }}</span>
+          {% endfor %}
+        </div>
+
         <div class="form-group form-group-wide">
           {{ form.instructions.label }}
-
-          {{ form.instructions(
-            rows="6",
-            placeholder="Instructions shown to Candidates before the examination begins."
-          ) }}
+          {{
+            form.instructions(
+              rows="6",
+              placeholder=(
+                "Instructions shown to Candidates before "
+                "the examination begins."
+              )
+            )
+          }}
 
           {% for error in form.instructions.errors %}
             <span class="field-error">{{ error }}</span>
@@ -88,9 +122,14 @@
 
         <a
           class="secondary-button"
-          href="{{ url_for('admin.exam_detail', exam_id=exam.id)
-                   if exam is defined
-                   else url_for('admin.index') }}"
+          href="{{
+            url_for(
+              'admin.exam_detail',
+              exam_id=exam.id
+            )
+            if exam is defined
+            else url_for('admin.index')
+          }}"
         >
           Cancel
         </a>

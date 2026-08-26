@@ -4,61 +4,40 @@
 
 {% block content %}
   <section class="card auth-card">
-    <span class="status-badge">
-      Submission received
-    </span>
-
-    <h1>
-      Thank you, {{ submission.candidate_name }}
-    </h1>
-
+    <span class="status-badge">Submission received</span>
+    <h1>Thank you, {{ submission.candidate_name }}</h1>
     <p>
-      Your responses for
-      <strong>{{ exam.title }}</strong>
-      have been recorded. This submission is final
-      and cannot be changed.
+      Your responses for <strong>{{ exam.title }}</strong> have been recorded.
+      This submission is final and cannot be changed.
     </p>
 
     <dl class="metadata-list metadata-list-stacked">
-      <div>
-        <dt>Course</dt>
-        <dd>
-          {{ exam.course_code }} —
-          {{ exam.course_title }}
-        </dd>
-      </div>
-
-      <div>
-        <dt>Candidate</dt>
-        <dd>{{ submission.candidate_email }}</dd>
-      </div>
-
-      <div>
-        <dt>Submission reason</dt>
-        <dd>
-          {{ submission.submission_reason
-             |replace('_', ' ')
-             |title }}
-        </dd>
-      </div>
+      <div><dt>Course</dt><dd>{{ exam.course_code }} — {{ exam.course_title }}</dd></div>
+      <div><dt>Candidate</dt><dd>{{ submission.candidate_email }}</dd></div>
+      <div><dt>Submission reason</dt><dd>{{ submission.submission_reason|replace('_', ' ')|title }}</dd></div>
     </dl>
 
     <div class="flash flash-info">
-      Grading and result release will be activated
-      in later phases.
+      Grading and result release will be activated according to this
+      examination's configured release policy. Open-ended responses must be
+      reviewed before any result can be released.
     </div>
+
+    <a
+      class="primary-button button-auto"
+      href="{{ url_for('candidate.candidate_result', token=exam.exam_link_token) }}"
+    >
+      Check result
+    </a>
   </section>
 
   <script>
     try {
       window.localStorage.removeItem(
-        {{ (
-          "mau-soap:draft:" ~ exam.exam_link_token
-        )|tojson }}
+        {{ ("mau-soap:draft:" ~ exam.exam_link_token)|tojson }},
       );
     } catch (_error) {
-      // The finalized server submission remains
-      // authoritative.
+      // The finalized server submission remains authoritative.
     }
   </script>
 {% endblock %}

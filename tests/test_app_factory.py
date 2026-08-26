@@ -3,7 +3,11 @@
 import pytest
 
 from app import create_app
-from app.config import _as_bool, _database_url, validate_configuration
+from app.config import (
+    _as_bool,
+    _database_url,
+    validate_configuration,
+)
 from app.extensions import db
 
 
@@ -11,24 +15,49 @@ def test_factory_uses_testing_configuration(app):
     """The testing configuration must be isolated and deterministic."""
 
     assert app.testing is True
-    assert app.config["SQLALCHEMY_DATABASE_URI"] == "sqlite+pysqlite:///:memory:"
-    assert app.config["CANDIDATE_EMAIL_DOMAIN"] == "gmail.com"
-    assert app.config["CANDIDATE_VERIFICATION_MAX_AGE_MINUTES"] == 10
-    assert app.config["CANDIDATE_SESSION_MAX_AGE_MINUTES"] == 30
+    assert (
+        app.config["SQLALCHEMY_DATABASE_URI"]
+        == "sqlite+pysqlite:///:memory:"
+    )
+    assert (
+        app.config["CANDIDATE_EMAIL_DOMAIN"]
+        == "mau.edu.ng"
+    )
+    assert (
+        app.config[
+            "CANDIDATE_VERIFICATION_MAX_AGE_MINUTES"
+        ]
+        == 10
+    )
+    assert (
+        app.config[
+            "CANDIDATE_SESSION_MAX_AGE_MINUTES"
+        ]
+        == 30
+    )
 
 
 def test_factory_can_start_without_configuration_overrides():
-    """The named testing configuration is complete without test overrides."""
+    """The named testing configuration is complete without overrides."""
 
     application = create_app("testing")
 
     assert application.testing is True
 
-def test_development_mail_has_safe_local_defaults(monkeypatch):
-    """Local password-reset tests must not require a live SMTP account."""
 
-    monkeypatch.delenv("MAIL_DEFAULT_SENDER", raising=False)
-    monkeypatch.delenv("MAIL_SUPPRESS_SEND", raising=False)
+def test_development_mail_has_safe_local_defaults(
+    monkeypatch,
+):
+    """Local reset tests must not require a live SMTP account."""
+
+    monkeypatch.delenv(
+        "MAIL_DEFAULT_SENDER",
+        raising=False,
+    )
+    monkeypatch.delenv(
+        "MAIL_SUPPRESS_SEND",
+        raising=False,
+    )
 
     from importlib import reload
 
@@ -36,16 +65,25 @@ def test_development_mail_has_safe_local_defaults(monkeypatch):
 
     reloaded_config = reload(config)
 
-    assert reloaded_config.DevelopmentConfig.MAIL_SUPPRESS_SEND is True
+    assert (
+        reloaded_config.DevelopmentConfig.MAIL_SUPPRESS_SEND
+        is True
+    )
     assert (
         reloaded_config.DevelopmentConfig.MAIL_DEFAULT_SENDER
         == "noreply@mau-soap.local"
     )
 
+
 def test_factory_registers_required_blueprints(app):
     """Every Phase 1 route group must be available."""
 
-    assert {"main", "admin", "candidate", "api"} <= set(app.blueprints)
+    assert {
+        "main",
+        "admin",
+        "candidate",
+        "api",
+    } <= set(app.blueprints)
 
 
 def test_database_extension_is_bound_to_app(app):
@@ -58,19 +96,30 @@ def test_database_extension_is_bound_to_app(app):
 def test_factory_rejects_unknown_configuration():
     """Typos in FLASK_CONFIG should produce a helpful error."""
 
-    with pytest.raises(ValueError, match="Unknown FLASK_CONFIG"):
+    with pytest.raises(
+        ValueError,
+        match="Unknown FLASK_CONFIG",
+    ):
         create_app("not-a-real-environment")
 
 
 def test_factory_rejects_domain_with_at_symbol():
     """The configured domain is stored without an @ prefix."""
 
-    with pytest.raises(RuntimeError, match="bare domain"):
-        create_app("testing", {"CANDIDATE_EMAIL_DOMAIN": "@gmail.com"})
+    with pytest.raises(
+        RuntimeError,
+        match="bare domain",
+    ):
+        create_app(
+            "testing",
+            {
+                "CANDIDATE_EMAIL_DOMAIN": "@mau.edu.ng",
+            },
+        )
 
 
 def test_configuration_rejects_missing_required_values():
-    """Startup validation should name every missing required setting."""
+    """Startup validation should name every missing setting."""
 
     with pytest.raises(
         RuntimeError,
@@ -80,62 +129,10 @@ def test_configuration_rejects_missing_required_values():
             {
                 "SECRET_KEY": None,
                 "SQLALCHEMY_DATABASE_URI": None,
-                "CANDIDATE_EMAIL_DOMAIN": "gmail.com",
+                "CANDIDATE_EMAIL_DOMAIN": "mau.edu.ng",
             }
         )
 
-
-@pytest.mark.parametrize(
-    ("environment_value", "expected"),
-    [("true", True), ("YES", True), ("0", False), ("off", False)],
-)
-def test_boolean_environment_values(monkeypatch, environment_value, expected):
-    """Boolean environment settings should accept common spellings."""
-
-    monkeypatch.setenv("MAU_SOAP_TEST_BOOLEAN", environment_value)
-
-    assert _as_bool("MAU_SOAP_TEST_BOOLEAN") is expected
-
-
-def test_boolean_environment_value_uses_default_when_missing(monkeypatch):
-    """An absent optional boolean should return its documented default."""
-
-    monkeypatch.delenv("MAU_SOAP_TEST_BOOLEAN", raising=False)
-
-    assert _as_bool("MAU_SOAP_TEST_BOOLEAN", default=True) is True
-
-
-@pytest.mark.parametrize(
-    ("configured_url", "expected_url"),
-    [
-        (
-            "postgres://user:password@localhost/database",
-            "postgresql+psycopg://user:password@localhost/database",
-        ),
-        (
-            "postgresql://user:password@localhost/database",
-            "postgresql+psycopg://user:password@localhost/database",
-        ),
-        (
-            "postgresql+psycopg://user:password@localhost/database",
-            "postgresql+psycopg://user:password@localhost/database",
-        ),
-    ],
-)
-def test_database_url_normalization(monkeypatch, configured_url, expected_url):
-    """Legacy PostgreSQL URLs should be normalized for Psycopg 3."""
-
-    monkeypatch.setenv("DATABASE_URL", configured_url)
-
-    assert _database_url() == expected_url
-
-
-def test_database_url_can_be_absent(monkeypatch):
-    """Missing DATABASE_URL is reported later by configuration validation."""
-
-    monkeypatch.delenv("DATABASE_URL", raising=False)
-
-    assert _database_url() is None
 
 @pytest.mark.parametrize(
     ("setting", "message"),
@@ -162,5 +159,109 @@ def test_configuration_rejects_invalid_evidence_limits(
     configured = dict(app.config)
     configured[setting] = 0
 
-    with pytest.raises(RuntimeError, match=message):
+    with pytest.raises(
+        RuntimeError,
+        match=message,
+    ):
         validate_configuration(configured)
+
+
+@pytest.mark.parametrize(
+    ("environment_value", "expected"),
+    [
+        ("true", True),
+        ("YES", True),
+        ("0", False),
+        ("off", False),
+    ],
+)
+def test_boolean_environment_values(
+    monkeypatch,
+    environment_value,
+    expected,
+):
+    """Boolean settings should accept common spellings."""
+
+    monkeypatch.setenv(
+        "MAU_SOAP_TEST_BOOLEAN",
+        environment_value,
+    )
+
+    assert (
+        _as_bool("MAU_SOAP_TEST_BOOLEAN")
+        is expected
+    )
+
+
+def test_boolean_environment_value_uses_default_when_missing(
+    monkeypatch,
+):
+    """An absent optional boolean uses its documented default."""
+
+    monkeypatch.delenv(
+        "MAU_SOAP_TEST_BOOLEAN",
+        raising=False,
+    )
+
+    assert (
+        _as_bool(
+            "MAU_SOAP_TEST_BOOLEAN",
+            default=True,
+        )
+        is True
+    )
+
+
+@pytest.mark.parametrize(
+    ("configured_url", "expected_url"),
+    [
+        (
+            "postgres://user:password@localhost/database",
+            (
+                "postgresql+psycopg://"
+                "user:password@localhost/database"
+            ),
+        ),
+        (
+            "postgresql://user:password@localhost/database",
+            (
+                "postgresql+psycopg://"
+                "user:password@localhost/database"
+            ),
+        ),
+        (
+            (
+                "postgresql+psycopg://"
+                "user:password@localhost/database"
+            ),
+            (
+                "postgresql+psycopg://"
+                "user:password@localhost/database"
+            ),
+        ),
+    ],
+)
+def test_database_url_normalization(
+    monkeypatch,
+    configured_url,
+    expected_url,
+):
+    """Legacy PostgreSQL URLs are normalized for Psycopg 3."""
+
+    monkeypatch.setenv(
+        "DATABASE_URL",
+        configured_url,
+    )
+
+    assert _database_url() == expected_url
+
+
+def test_database_url_can_be_absent(monkeypatch):
+    """Missing DATABASE_URL is reported during validation."""
+
+    monkeypatch.delenv(
+        "DATABASE_URL",
+        raising=False,
+    )
+
+    assert _database_url() is None

@@ -1,4 +1,4 @@
-"""Tests for Phase 5 Candidate verification."""
+"""Tests for Phase 5 Candidate OTP and magic-link verification."""
 
 import re
 from datetime import UTC, datetime, timedelta
@@ -43,10 +43,8 @@ def _exam(
         release_option=ReleaseOption.IMMEDIATE,
         exam_link_token=token,
     )
-
     db.session.add(exam)
     db.session.commit()
-
     return exam
 
 
@@ -55,7 +53,7 @@ def _request_verification(
     exam,
     *,
     name="Amina Bello",
-    email="AMINA@GMAIL.COM",
+    email="AMINA@MAU.EDU.NG",
 ):
     with mail.record_messages() as outbox:
         response = client.post(
@@ -93,7 +91,7 @@ def _verification(exam, **overrides):
     values = {
         "exam": exam,
         "candidate_name": "Amina Bello",
-        "candidate_email": "amina@gmail.com",
+        "candidate_email": "amina@mau.edu.ng",
         "otp_hash": credential_digest("123456"),
         "magic_token_hash": credential_digest(
             "magic-token"
@@ -146,7 +144,7 @@ def test_candidate_landing_validates_identity_and_domain(
         f"/exam/{exam.exam_link_token}",
         data={
             "name": "Amina Bello",
-            "email": "amina@mau.edu.ng",
+            "email": "amina@gmail.com",
         },
     )
 
@@ -159,7 +157,10 @@ def test_candidate_landing_validates_identity_and_domain(
     assert b"Invalid email address" in invalid.data
 
     assert wrong_domain.status_code == 200
-    assert b"ending in @gmail.com" in wrong_domain.data
+    assert (
+        b"ending in @mau.edu.ng"
+        in wrong_domain.data
+    )
 
 
 def test_request_sends_hashed_otp_and_magic_link(
@@ -180,7 +181,7 @@ def test_request_sends_hashed_otp_and_magic_link(
 
     assert len(messages) == 1
     assert messages[0].recipients == [
-        "amina@gmail.com"
+        "amina@mau.edu.ng"
     ]
     assert "Database Systems" in messages[0].subject
 
@@ -196,13 +197,15 @@ def test_request_sends_hashed_otp_and_magic_link(
     assert verification.candidate_name == "Amina Bello"
     assert (
         verification.candidate_email
-        == "amina@gmail.com"
+        == "amina@mau.edu.ng"
     )
-    assert verification.otp_hash == credential_digest(
-        raw_otp
+    assert (
+        verification.otp_hash
+        == credential_digest(raw_otp)
     )
-    assert verification.magic_token_hash != (
-        magic_path.rsplit("/", 1)[-1]
+    assert (
+        verification.magic_token_hash
+        != magic_path.rsplit("/", 1)[-1]
     )
     assert raw_otp not in verification.otp_hash
     assert verification.attempts == 0
@@ -224,9 +227,12 @@ def test_request_sends_hashed_otp_and_magic_link(
     assert b"Check your email" in verify_page.data
 
     with client.session_transaction() as candidate_session:
-        assert candidate_session[
-            f"candidate_pending_verification_{exam.id}"
-        ] == verification.id
+        assert (
+            candidate_session[
+                f"candidate_pending_verification_{exam.id}"
+            ]
+            == verification.id
+        )
 
 
 def test_token_generation_uses_csprng_sizes(
@@ -244,7 +250,6 @@ def test_token_generation_uses_csprng_sizes(
             or 42
         ),
     )
-
     monkeypatch.setattr(
         "app.candidate.services.secrets.token_urlsafe",
         lambda byte_count: (
@@ -253,12 +258,14 @@ def test_token_generation_uses_csprng_sizes(
         ),
     )
 
-    raw_otp, raw_magic, verification = (
-        create_verification(
-            exam,
-            " Candidate Name ",
-            " CANDIDATE@GMAIL.COM ",
-        )
+    (
+        raw_otp,
+        raw_magic,
+        verification,
+    ) = create_verification(
+        exam,
+        " Candidate Name ",
+        " CANDIDATE@MAU.EDU.NG ",
     )
 
     raw_session = complete_verification(
@@ -281,18 +288,17 @@ def test_token_generation_uses_csprng_sizes(
     )
     assert (
         verification.candidate_email
-        == "candidate@gmail.com"
+        == "candidate@mau.edu.ng"
     )
 
 
-def test_requesting_new_code_locks_previous_token(
+def test_requesting_new_code_locks_previous_pending_token(
     client,
     admin,
 ):
     exam = _exam(admin)
 
     _request_verification(client, exam)
-
     _request_verification(
         client,
         exam,
@@ -336,20 +342,24 @@ def test_email_failure_rolls_back_verification(
         f"/exam/{exam.exam_link_token}",
         data={
             "name": "Amina Bello",
-            "email": "amina@gmail.com",
+            "email": "amina@mau.edu.ng",
         },
     )
 
     assert response.status_code == 200
-    assert b"Verification email could not be sent" in (
-        response.data
+    assert (
+        b"Verification email could not be sent"
+        in response.data
     )
-    assert db.session.scalar(
-        select(VerificationToken)
-    ) is None
+    assert (
+        db.session.scalar(
+            select(VerificationToken)
+        )
+        is None
+    )
 
 
-def test_email_service_sends_when_enabled(
+def test_email_service_sends_when_delivery_is_enabled(
     app,
     admin,
     monkeypatch,
@@ -375,7 +385,7 @@ def test_email_service_sends_when_enabled(
 
     assert len(sent_messages) == 1
     assert sent_messages[0].recipients == [
-        "amina@gmail.com"
+        "amina@mau.edu.ng"
     ]
     assert "123456" in sent_messages[0].body
 
@@ -395,14 +405,20 @@ def test_otp_page_requires_pending_request(
         f"/exam/{exam.exam_link_token}"
     )
 
-    _set_pending(client, exam, 99999)
+    _set_pending(
+        client,
+        exam,
+        99999,
+    )
 
-    assert client.get(
+    response = client.get(
         f"/exam/{exam.exam_link_token}/verify"
-    ).status_code == 302
+    )
+
+    assert response.status_code == 302
 
 
-def test_wrong_otps_lock_after_five_failures(
+def test_malformed_and_wrong_otps_lock_after_five_failures(
     client,
     admin,
 ):
@@ -413,7 +429,9 @@ def test_wrong_otps_lock_after_five_failures(
         exam,
     )
 
-    raw_otp, _ = _email_credentials(messages[0])
+    raw_otp, _ = _email_credentials(
+        messages[0]
+    )
 
     wrong_otp = (
         "999999"
@@ -435,8 +453,14 @@ def test_wrong_otps_lock_after_five_failures(
     )
 
     assert malformed.status_code == 200
-    assert b"Enter the six-digit code" in malformed.data
-    assert b"4 attempt(s) remaining" in malformed.data
+    assert (
+        b"Enter the six-digit code"
+        in malformed.data
+    )
+    assert (
+        b"4 attempt(s) remaining"
+        in malformed.data
+    )
 
     for expected_attempt in range(2, 6):
         response = client.post(
@@ -447,9 +471,12 @@ def test_wrong_otps_lock_after_five_failures(
         if expected_attempt < 5:
             assert response.status_code == 200
             assert (
-                f"{5 - expected_attempt} attempt(s) "
-                f"remaining"
-            ).encode() in response.data
+                (
+                    f"{5 - expected_attempt} "
+                    "attempt(s) remaining"
+                ).encode()
+                in response.data
+            )
         else:
             assert response.status_code == 302
 
@@ -457,12 +484,12 @@ def test_wrong_otps_lock_after_five_failures(
     assert verification.locked_at is not None
     assert verification.is_locked is True
 
-    assert client.get(
-        verify_url
-    ).status_code == 302
+    response = client.get(verify_url)
+
+    assert response.status_code == 302
 
 
-def test_expired_and_used_pending_requests_rejected(
+def test_expired_and_verified_pending_requests_are_rejected(
     client,
     admin,
 ):
@@ -480,7 +507,11 @@ def test_expired_and_used_pending_requests_rejected(
         ),
     )
 
-    _set_pending(client, exam, expired.id)
+    _set_pending(
+        client,
+        exam,
+        expired.id,
+    )
 
     assert client.get(
         verify_url
@@ -494,14 +525,18 @@ def test_expired_and_used_pending_requests_rejected(
         verified_at=datetime.now(UTC),
     )
 
-    _set_pending(client, exam, verified.id)
+    _set_pending(
+        client,
+        exam,
+        verified.id,
+    )
 
     assert client.get(
         verify_url
     ).status_code == 302
 
 
-def test_correct_otp_issues_protected_access(
+def test_correct_otp_issues_protected_access_without_starting_exam(
     client,
     admin,
 ):
@@ -512,7 +547,9 @@ def test_correct_otp_issues_protected_access(
         exam,
     )
 
-    raw_otp, _ = _email_credentials(messages[0])
+    raw_otp, _ = _email_credentials(
+        messages[0]
+    )
 
     verification = db.session.scalar(
         select(VerificationToken)
@@ -529,10 +566,14 @@ def test_correct_otp_issues_protected_access(
     )
 
     assert verification.verified_at is not None
-    assert verification.session_token_hash is not None
-    assert db.session.scalar(
-        select(Submission)
-    ) is None
+    assert (
+        verification.session_token_hash
+        is not None
+    )
+    assert (
+        db.session.scalar(select(Submission))
+        is None
+    )
     assert exam.is_locked is False
 
     with client.session_transaction() as candidate_session:
@@ -546,8 +587,9 @@ def test_correct_otp_issues_protected_access(
         )
         assert candidate_session.permanent is True
 
-    assert verification.session_token_hash == (
-        credential_digest(raw_session_token)
+    assert (
+        verification.session_token_hash
+        == credential_digest(raw_session_token)
     )
 
     ready = client.get(
@@ -557,8 +599,7 @@ def test_correct_otp_issues_protected_access(
     assert ready.status_code == 200
     assert b"Email verified" in ready.data
     assert b"Amina Bello" in ready.data
-    assert b"timer is" in ready.data
-    assert b"not running" in ready.data
+    assert b"timer is not running" in ready.data
     assert b"Start examination" in ready.data
 
     landing = client.get(
@@ -571,7 +612,7 @@ def test_correct_otp_issues_protected_access(
     )
 
 
-def test_valid_magic_link_works_in_fresh_browser(
+def test_valid_magic_link_verifies_in_a_fresh_browser(
     client,
     admin,
 ):
@@ -582,7 +623,9 @@ def test_valid_magic_link_works_in_fresh_browser(
         exam,
     )
 
-    _, magic_path = _email_credentials(messages[0])
+    _, magic_path = _email_credentials(
+        messages[0]
+    )
 
     verification = db.session.scalar(
         select(VerificationToken)
@@ -599,12 +642,14 @@ def test_valid_magic_link_works_in_fresh_browser(
 
     assert verification.verified_at is not None
 
-    assert client.get(
+    response = client.get(
         f"/exam/{exam.exam_link_token}/ready"
-    ).status_code == 200
+    )
+
+    assert response.status_code == 200
 
 
-def test_invalid_magic_link_states_rejected(
+def test_invalid_magic_link_states_are_rejected(
     client,
     admin,
 ):
@@ -641,29 +686,31 @@ def test_invalid_magic_link_states_rejected(
         magic_token_hash=credential_digest(
             "expired-magic"
         ),
-        expires_at=now - timedelta(seconds=1),
+        expires_at=(
+            now - timedelta(seconds=1)
+        ),
     )
 
     paths = [
         (
-            f"/exam/{exam.exam_link_token}/"
-            f"verify/unknown"
+            f"/exam/{exam.exam_link_token}"
+            "/verify/unknown"
         ),
         (
-            f"/exam/{other_exam.exam_link_token}/"
-            f"verify/magic-token"
+            f"/exam/{other_exam.exam_link_token}"
+            "/verify/magic-token"
         ),
         (
-            f"/exam/{exam.exam_link_token}/"
-            f"verify/locked-magic"
+            f"/exam/{exam.exam_link_token}"
+            "/verify/locked-magic"
         ),
         (
-            f"/exam/{exam.exam_link_token}/"
-            f"verify/used-magic"
+            f"/exam/{exam.exam_link_token}"
+            "/verify/used-magic"
         ),
         (
-            f"/exam/{exam.exam_link_token}/"
-            f"verify/expired-magic"
+            f"/exam/{exam.exam_link_token}"
+            "/verify/expired-magic"
         ),
     ]
 
@@ -672,12 +719,13 @@ def test_invalid_magic_link_states_rejected(
 
         assert response.status_code == 302
 
-        landing = client.get(
+        follow = client.get(
             response.headers["Location"]
         )
 
-        assert b"invalid or has expired" in (
-            landing.data
+        assert (
+            b"invalid or has expired"
+            in follow.data
         )
 
     assert valid.verified_at is None
@@ -686,7 +734,7 @@ def test_invalid_magic_link_states_rejected(
     assert verification_is_expired(expired) is True
 
 
-def test_ready_rejects_invalid_sessions(
+def test_ready_page_rejects_missing_bad_and_expired_sessions(
     client,
     admin,
 ):
@@ -730,17 +778,16 @@ def test_ready_rejects_invalid_sessions(
         ready_url
     ).status_code == 302
 
-    assert resolve_candidate_session(
-        exam,
-        None,
-    ) is None
-
+    assert (
+        resolve_candidate_session(exam, None)
+        is None
+    )
     assert verification_is_expired(
         verification
     ) is True
 
 
-def test_completion_revokes_sibling_access(
+def test_completion_revokes_sibling_access_and_attempt_counter_is_bounded(
     app,
     admin,
 ):
@@ -761,15 +808,20 @@ def test_completion_revokes_sibling_access(
         ),
     )
 
-    raw_session = complete_verification(current)
+    raw_session = complete_verification(
+        current
+    )
 
     register_failed_attempt(current)
+
     current.attempts = 5
+
     register_failed_attempt(current)
 
     assert sibling.is_locked is True
-    assert current.session_token_hash == (
-        credential_digest(raw_session)
+    assert (
+        current.session_token_hash
+        == credential_digest(raw_session)
     )
     assert current.attempts == 5
     assert current.is_locked is True
@@ -787,4 +839,7 @@ def test_timezone_normalizer_and_candidate_index(
     response = client.get("/exam/")
 
     assert response.status_code == 200
-    assert b"secure examination link" in response.data
+    assert (
+        b"secure examination link"
+        in response.data
+    )

@@ -6,15 +6,32 @@
   <section class="dashboard-shell">
     <div class="page-heading">
       <div>
-        <span class="eyebrow">Authenticated · Examination management</span>
+        <span class="eyebrow">
+          Authenticated · Examination management
+        </span>
         <h1>Admin dashboard</h1>
         <p>Welcome, <strong>{{ current_user.email }}</strong>.</p>
       </div>
+
       <div class="item-actions">
-        <a class="secondary-button" href="{{ url_for('admin.grading_queue') }}">
+        <a
+          class="secondary-button"
+          href="{{ url_for('admin.results_overview') }}"
+        >
+          Candidate results
+        </a>
+
+        <a
+          class="secondary-button"
+          href="{{ url_for('admin.grading_queue') }}"
+        >
           Pending grading
         </a>
-        <a class="primary-button button-auto" href="{{ url_for('admin.create_exam') }}">
+
+        <a
+          class="primary-button button-auto"
+          href="{{ url_for('admin.create_exam') }}"
+        >
           Create examination
         </a>
       </div>
@@ -25,13 +42,24 @@
         {% for exam in exams %}
           <article class="card exam-card">
             <div class="card-heading">
-              <span class="status-badge {% if exam.is_locked %}status-locked{% endif %}">
+              <span
+                class="status-badge
+                  {% if exam.is_locked %}status-locked{% endif %}"
+              >
                 {{ "Locked" if exam.is_locked else "Editable" }}
               </span>
-              <span class="muted-text">{{ exam.questions|length }} question(s)</span>
+
+              <span class="muted-text">
+                {{ exam.questions|length }} question(s)
+              </span>
             </div>
+
             <h2>{{ exam.title }}</h2>
-            <p><strong>{{ exam.course_code }}</strong> — {{ exam.course_title }}</p>
+            <p>
+              <strong>{{ exam.course_code }}</strong>
+              — {{ exam.course_title }}
+            </p>
+
             <dl class="metadata-list">
               <div>
                 <dt>Time limit</dt>
@@ -40,11 +68,22 @@
               <div>
                 <dt>Monitoring</dt>
                 <dd>
-                  {{ "Face presence" if exam.monitor_type.value == "face" else "Eye/gaze" }}
+                  {{
+                    "Face presence"
+                    if exam.monitor_type.value == "face"
+                    else "Eye/gaze"
+                  }}
                 </dd>
               </div>
             </dl>
-            <a class="secondary-button" href="{{ url_for('admin.exam_detail', exam_id=exam.id) }}">
+
+            <a
+              class="secondary-button"
+              href="{{ url_for(
+                'admin.exam_detail',
+                exam_id=exam.id
+              ) }}"
+            >
               Manage examination
             </a>
           </article>
@@ -53,8 +92,15 @@
     {% else %}
       <section class="card empty-state">
         <h2>No examinations yet</h2>
-        <p>Create your first examination, configure monitoring, and add questions.</p>
-        <a class="primary-button button-auto" href="{{ url_for('admin.create_exam') }}">
+        <p>
+          Create your first examination, configure monitoring,
+          and add questions.
+        </p>
+
+        <a
+          class="primary-button button-auto"
+          href="{{ url_for('admin.create_exam') }}"
+        >
           Create your first examination
         </a>
       </section>
@@ -71,17 +117,37 @@
           <span class="eyebrow">Live integrity feed</span>
           <h2>Candidate supervision warnings</h2>
         </div>
-        <span id="supervision-feed-status" class="status-badge">Connecting…</span>
+
+        <span
+          id="supervision-feed-status"
+          class="status-badge"
+        >
+          Connecting…
+        </span>
       </div>
+
       <p class="muted-text">
-        Face-absence alerts appear first. Their protected evidence video becomes
-        available automatically when the Candidate's face returns.
+        Face-absence alerts appear first. Their protected evidence
+        video becomes available automatically when the Candidate's
+        face returns.
       </p>
-      <div id="supervision-event-list" class="supervision-event-list">
-        <p id="supervision-empty" class="muted-text">No warnings recorded yet.</p>
+
+      <div
+        id="supervision-event-list"
+        class="supervision-event-list"
+      >
+        <p id="supervision-empty" class="muted-text">
+          No warnings recorded yet.
+        </p>
       </div>
     </section>
 
-    <script src="{{ url_for('static', filename='js/admin_supervision.js') }}" defer></script>
+    <script
+      src="{{ url_for(
+        'static',
+        filename='js/admin_supervision.js'
+      ) }}"
+      defer
+    ></script>
   </section>
 {% endblock %}

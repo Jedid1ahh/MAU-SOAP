@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}Result pending | MAU-SOAP{% endblock %}
+
+{% block content %}
+  <section class="card auth-card">
+    <span class="status-badge status-locked">Result pending</span>
+    <h1>Your result is not available yet</h1>
+    <p>
+      Your submission for <strong>{{ exam.title }}</strong> is secure.
+    </p>
+
+    {% if awaiting_manual_review %}
+      <div class="flash flash-info">
+        One or more open-ended responses still require Admin grading. Your
+        marks remain private until grading is complete.
+      </div>
+    {% elif exam.scheduled_release_at %}
+      <div class="flash flash-info">
+        Grading is complete. Your result is scheduled for release at
+        <strong>{{ exam.scheduled_release_at }} UTC</strong>.
+      </div>
+    {% else %}
+      <div class="flash flash-info">
+        Your completed result is awaiting release by the Admin.
+      </div>
+    {% endif %}
+
+    <a
+      class="secondary-button"
+      href="{{ url_for('candidate.submission_received', token=exam.exam_link_token) }}"
+    >
+      Back to submission receipt
+    </a>
+  </section>
+{% endblock %}
