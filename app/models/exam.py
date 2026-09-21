@@ -14,6 +14,7 @@ from .base import TimestampMixin, database_enum
 from .enums import MonitorType, ReleaseOption
 
 if TYPE_CHECKING:
+    from .course import Course
     from .question import Question
     from .submission import Submission
     from .user import User
@@ -21,7 +22,7 @@ if TYPE_CHECKING:
 
 
 class Exam(TimestampMixin, db.Model):
-    """An Admin-owned exam and its supervision/release settings."""
+    """A course examination owned by its currently assigned Lecturer."""
 
     __tablename__ = "exams"
     __table_args__ = (
@@ -36,6 +37,10 @@ class Exam(TimestampMixin, db.Model):
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    course_id: Mapped[int] = mapped_column(
+        ForeignKey("courses.id", ondelete="RESTRICT"),
+        index=True,
+    )
     admin_id: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"),
         index=True,
@@ -63,6 +68,7 @@ class Exam(TimestampMixin, db.Model):
     )
 
     admin: Mapped[User] = relationship(back_populates="exams")
+    course: Mapped[Course] = relationship(back_populates="exams")
     questions: Mapped[list[Question]] = relationship(
         back_populates="exam",
         cascade="all, delete-orphan",

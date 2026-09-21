@@ -6,148 +6,77 @@
   <section class="dashboard-shell">
     <div class="page-heading">
       <div>
-        <span class="eyebrow">
-          Authenticated · Examination management
-        </span>
+        <span class="eyebrow">System administration</span>
         <h1>Admin dashboard</h1>
-        <p>Welcome, <strong>{{ current_user.email }}</strong>.</p>
+        <p>
+          Manage institutional accounts, create courses, and assign each
+          course to one approved Lecturer.
+        </p>
       </div>
 
       <div class="item-actions">
-        <a
-          class="secondary-button"
-          href="{{ url_for('admin.results_overview') }}"
-        >
-          Candidate results
+        <a class="secondary-button" href="{{ url_for('admin.accounts') }}">
+          Accounts
         </a>
-
-        <a
-          class="secondary-button"
-          href="{{ url_for('admin.grading_queue') }}"
-        >
-          Pending grading
-        </a>
-
-        <a
-          class="primary-button button-auto"
-          href="{{ url_for('admin.create_exam') }}"
-        >
-          Create examination
+        <a class="primary-button button-auto" href="{{ url_for('admin.create_course') }}">
+          Create course
         </a>
       </div>
     </div>
 
-    {% if exams %}
+    {% if courses %}
       <div class="exam-grid">
-        {% for exam in exams %}
+        {% for course in courses %}
           <article class="card exam-card">
             <div class="card-heading">
-              <span
-                class="status-badge
-                  {% if exam.is_locked %}status-locked{% endif %}"
-              >
-                {{ "Locked" if exam.is_locked else "Editable" }}
+              <span class="status-badge {{ 'status-pending' if not course.lecturer else '' }}">
+                {{ "Assigned" if course.lecturer else "Unassigned" }}
               </span>
-
               <span class="muted-text">
-                {{ exam.questions|length }} question(s)
+                {{ course.enrollments|selectattr('is_accepted')|list|length }} Student(s)
               </span>
             </div>
 
-            <h2>{{ exam.title }}</h2>
-            <p>
-              <strong>{{ exam.course_code }}</strong>
-              — {{ exam.course_title }}
-            </p>
+            <h2>{{ course.code }}</h2>
+            <p>{{ course.title }}</p>
 
-            <dl class="metadata-list">
+            <dl class="metadata-list metadata-list-stacked">
               <div>
-                <dt>Time limit</dt>
-                <dd>{{ exam.time_limit_minutes }} minutes</dd>
+                <dt>Lecturer</dt>
+                <dd>
+                  {% if course.lecturer %}
+                    {{ course.lecturer.full_name }} · {{ course.lecturer.email }}
+                  {% else %}
+                    Not assigned
+                  {% endif %}
+                </dd>
               </div>
               <div>
-                <dt>Monitoring</dt>
-                <dd>
-                  {{
-                    "Face presence"
-                    if exam.monitor_type.value == "face"
-                    else "Eye/gaze"
-                  }}
-                </dd>
+                <dt>Examinations</dt>
+                <dd>{{ course.exams|length }}</dd>
               </div>
             </dl>
 
             <a
               class="secondary-button"
-              href="{{ url_for(
-                'admin.exam_detail',
-                exam_id=exam.id
-              ) }}"
+              href="{{ url_for('admin.edit_course', course_id=course.id) }}"
             >
-              Manage examination
+              Edit or reassign
             </a>
           </article>
         {% endfor %}
       </div>
     {% else %}
       <section class="card empty-state">
-        <h2>No examinations yet</h2>
+        <h2>No courses yet</h2>
         <p>
-          Create your first examination, configure monitoring,
-          and add questions.
+          Approve at least one Lecturer account, then create and assign the
+          first course.
         </p>
-
-        <a
-          class="primary-button button-auto"
-          href="{{ url_for('admin.create_exam') }}"
-        >
-          Create your first examination
+        <a class="primary-button button-auto" href="{{ url_for('admin.create_course') }}">
+          Create first course
         </a>
       </section>
     {% endif %}
-
-    <section
-      id="supervision-feed"
-      class="card supervision-feed"
-      data-events-url="{{ url_for('admin.supervision_events') }}"
-      aria-live="polite"
-    >
-      <div class="card-heading">
-        <div>
-          <span class="eyebrow">Live integrity feed</span>
-          <h2>Candidate supervision warnings</h2>
-        </div>
-
-        <span
-          id="supervision-feed-status"
-          class="status-badge"
-        >
-          Connecting…
-        </span>
-      </div>
-
-      <p class="muted-text">
-        Face-absence alerts appear first. Their protected evidence
-        video becomes available automatically when the Candidate's
-        face returns.
-      </p>
-
-      <div
-        id="supervision-event-list"
-        class="supervision-event-list"
-      >
-        <p id="supervision-empty" class="muted-text">
-          No warnings recorded yet.
-        </p>
-      </div>
-    </section>
-
-    <script
-      src="{{ url_for(
-        'static',
-        filename='js/admin_supervision.js'
-      ) }}"
-      defer
-    ></script>
   </section>
 {% endblock %}

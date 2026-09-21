@@ -12,7 +12,7 @@
 
     {% if awaiting_manual_review %}
       <div class="flash flash-info">
-        One or more open-ended responses still require Admin grading. Your
+        One or more open-ended responses still require Lecturer grading. Your
         marks remain private until grading is complete.
       </div>
     {% elif exam.scheduled_release_at %}
@@ -22,7 +22,7 @@
       </div>
     {% else %}
       <div class="flash flash-info">
-        Your completed result is awaiting release by the Admin.
+        Your completed result is awaiting release by the Lecturer.
       </div>
     {% endif %}
 

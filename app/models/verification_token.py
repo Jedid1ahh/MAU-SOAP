@@ -1,4 +1,4 @@
-"""Candidate OTP and magic-link verification model."""
+"""Legacy Candidate OTP records retained for migration compatibility."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 
 class VerificationToken(db.Model):
-    """Hashed, expiring credentials for passwordless Candidate verification."""
+    """Historical credentials retained without an active examination flow."""
 
     __tablename__ = "verification_tokens"
     __table_args__ = (

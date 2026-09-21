@@ -9,6 +9,13 @@ class StringEnum(str, Enum):
 
 class Role(StringEnum):
     ADMIN = "admin"
+    LECTURER = "lecturer"
+    STUDENT = "student"
+
+
+class EnrollmentStatus(StringEnum):
+    PENDING = "pending"
+    ACCEPTED = "accepted"
 
 
 class MonitorType(StringEnum):
@@ -38,6 +45,7 @@ class ViolationType(StringEnum):
 class GradedBy(StringEnum):
     AUTOMATIC = "automatic"
     ADMIN = "admin"
+    LECTURER = "lecturer"
 
 
 class ResultStatus(StringEnum):

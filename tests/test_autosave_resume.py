@@ -20,11 +20,13 @@ from app.models import (
     ReleaseOption,
     Submission,
 )
+from tests.helpers import authenticate_enrolled_student, course_for
 
 
 def _exam(admin, *, token="autosave-exam"):
     exam = Exam(
         admin_id=admin.id,
+        course=course_for(admin, "CSC 410", "Cloud Computing"),
         title="Cloud Computing",
         course_code="CSC 410",
         course_title="Cloud Computing",
@@ -93,6 +95,12 @@ def _submission(
     db.session.commit()
 
     if client is not None:
+        authenticate_enrolled_student(
+            client,
+            exam,
+            email=submission.candidate_email,
+            name=submission.candidate_name,
+        )
         with client.session_transaction() as candidate_session:
             candidate_session[
                 f"candidate_access_token_{exam.id}"
@@ -112,7 +120,7 @@ def _answers(exam, *, mcq="A", short="Elastic scaling"):
     }
 
 
-def test_session_bootstrap_restores_saved_answers_and_resume_credential(
+def test_session_bootstrap_restores_saved_answers_for_logged_in_student(
     client,
     admin,
 ):
@@ -140,7 +148,7 @@ def test_session_bootstrap_restores_saved_answers_and_resume_credential(
     assert questions.status_code == 200
     assert payload["responses"] == _answers(exam)
     assert payload["warning_count"] == 2
-    assert payload["resume_token"] == "phase-eight-resume-token"
+    assert "resume_token" not in payload
     assert payload["last_saved_at"] == saved_at.isoformat()
 
 
@@ -235,10 +243,8 @@ def test_autosave_requires_matching_candidate_session(
         json={"responses": _answers(exam)},
     )
 
-    assert response.status_code == 403
-    assert response.get_json() == {
-        "error": "Candidate session required."
-    }
+    assert response.status_code == 302
+    assert "/account/login" in response.headers["Location"]
 
 
 def test_autosave_rejects_finalized_and_expired_attempts(
@@ -296,10 +302,15 @@ def test_resume_endpoint_restores_active_attempt_in_fresh_browser(
     exam = _exam(admin)
     _submission(None, exam)
     fresh_client = app.test_client()
+    authenticate_enrolled_student(
+        fresh_client,
+        exam,
+        email="amina@gmail.com",
+    )
 
     response = fresh_client.post(
         f"/exam/{exam.exam_link_token}/resume",
-        json={"resume_token": "phase-eight-resume-token"},
+        json={},
     )
 
     assert response.status_code == 200
@@ -312,70 +323,24 @@ def test_resume_endpoint_restores_active_attempt_in_fresh_browser(
         "submitted": False,
     }
 
-    with fresh_client.session_transaction() as candidate_session:
-        assert candidate_session[
-            f"candidate_access_token_{exam.id}"
-        ] == "phase-eight-resume-token"
-        assert candidate_session.permanent is False
-
     session_page = fresh_client.get(
         f"/exam/{exam.exam_link_token}/session"
     )
     assert session_page.status_code == 200
 
 
-@pytest.mark.parametrize(
-    "payload,expected_status,expected_error",
-    [
-        (
-            [],
-            400,
-            "A JSON resume request is required.",
-        ),
-        ({}, 400, "Invalid resume token."),
-        (
-            {"resume_token": 7},
-            400,
-            "Invalid resume token.",
-        ),
-        (
-            {"resume_token": "short"},
-            400,
-            "Invalid resume token.",
-        ),
-        (
-            {"resume_token": "x" * 256},
-            400,
-            "Invalid resume token.",
-        ),
-        (
-            {
-                "resume_token": (
-                    "unknown-but-long-resume-token"
-                )
-            },
-            404,
-            "Saved examination attempt not found.",
-        ),
-    ],
-)
-def test_resume_endpoint_rejects_invalid_or_unknown_tokens(
-    client,
-    admin,
-    payload,
-    expected_status,
-    expected_error,
-):
+def test_resume_endpoint_requires_authenticated_owned_attempt(client, admin):
     exam = _exam(admin)
 
-    response = client.post(
-        f"/exam/{exam.exam_link_token}/resume",
-        json=payload,
-    )
+    anonymous = client.post(f"/exam/{exam.exam_link_token}/resume", json={})
+    assert anonymous.status_code == 302
+    assert "/account/login" in anonymous.headers["Location"]
 
-    assert response.status_code == expected_status
-    assert response.get_json() == {
-        "error": expected_error
+    authenticate_enrolled_student(client, exam)
+    missing = client.post(f"/exam/{exam.exam_link_token}/resume", json={})
+    assert missing.status_code == 404
+    assert missing.get_json() == {
+        "error": "Authenticated examination attempt not found."
     }
 
 
@@ -404,14 +369,16 @@ def test_resume_endpoint_opens_receipt_for_closed_attempts(
         ),
     )
     fresh_client = app.test_client()
+    authenticate_enrolled_student(
+        fresh_client,
+        exam,
+        email=submission.candidate_email,
+        name=submission.candidate_name,
+    )
 
     response = fresh_client.post(
         f"/exam/{exam.exam_link_token}/resume",
-        json={
-            "resume_token": (
-                f"{state}-phase-eight-token"
-            )
-        },
+        json={},
     )
 
     assert response.status_code == 200
@@ -479,7 +446,7 @@ def test_landing_redirects_cookie_authenticated_attempts(
         )
 
 
-def test_landing_and_receipt_include_browser_recovery_controls(
+def test_dashboard_reentry_and_receipt_keep_autosave_recovery(
     client,
     admin,
 ):
@@ -488,27 +455,13 @@ def test_landing_and_receipt_include_browser_recovery_controls(
         f"/exam/{exam.exam_link_token}"
     )
 
-    assert landing.status_code == 200
-    assert b"candidate-entry" in landing.data
-    assert b"candidate_resume.js" in landing.data
-    assert (
-        b"A saved examination attempt was found"
-        in landing.data
-    )
+    assert landing.status_code == 302
+    assert "/account/login" in landing.headers["Location"]
 
-    resume_script = client.get(
-        "/static/js/candidate_resume.js"
-    )
     autosave_script = client.get(
         "/static/js/exam_autosave.js"
     )
 
-    assert resume_script.status_code == 200
-    assert (
-        b"window.localStorage"
-        in resume_script.data
-    )
-    assert b"resume_token" in resume_script.data
     assert autosave_script.status_code == 200
     assert (
         b"AUTOSAVE_INTERVAL_MS"

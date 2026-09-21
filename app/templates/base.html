@@ -11,13 +11,22 @@
       <a class="brand" href="{{ url_for('main.index') }}">MAU-SOAP</a>
       <nav aria-label="Primary navigation">
         {% if current_user.is_authenticated %}
-          <a href="{{ url_for('admin.index') }}">Dashboard</a>
-          <form action="{{ url_for('admin.logout') }}" method="post">
+          {% if current_user.role.value == "admin" %}
+            <a href="{{ url_for('admin.index') }}">Admin dashboard</a>
+          {% elif current_user.role.value == "lecturer" %}
+            <a href="{{ url_for('lecturer.index') }}">Lecturer dashboard</a>
+          {% else %}
+            <a href="{{ url_for('student.index') }}">Student dashboard</a>
+          {% endif %}
+          <form
+            action="{{ url_for('accounts.logout') }}"
+            method="post"
+          >
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button class="link-button" type="submit">Log out</button>
           </form>
         {% else %}
-          <a href="{{ url_for('admin.login') }}">Admin login</a>
+          <a href="{{ url_for('accounts.login') }}">Login</a>
         {% endif %}
       </nav>
     </header>

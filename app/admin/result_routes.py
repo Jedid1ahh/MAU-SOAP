@@ -1,4 +1,4 @@
-"""Admin result oversight and early-release routes."""
+"""Lecturer result oversight and early-release routes."""
 
 from __future__ import annotations
 
@@ -9,6 +9,8 @@ from sqlalchemy.orm import selectinload
 
 from app.extensions import db
 from app.grading import grade_submission
+from app.lecturer import lecturer_bp
+from app.lecturer.auth import lecturer_required
 from app.models import AnswerGrade, Exam, Submission
 from app.result_release import (
     ResultNotCompleteError,
@@ -16,12 +18,9 @@ from app.result_release import (
     synchronize_result_release,
 )
 
-from . import admin_bp
-from .auth import admin_required
-
 
 def _owned_finalized_submission(submission_id: int) -> Submission:
-    """Load one finalized result belonging to the authenticated Admin."""
+    """Load one finalized result belonging to the authenticated Lecturer."""
 
     submission = db.session.scalar(
         select(Submission)
@@ -45,8 +44,8 @@ def _owned_finalized_submission(submission_id: int) -> Submission:
     return submission
 
 
-@admin_bp.get("/results")
-@admin_required
+@lecturer_bp.get("/results")
+@lecturer_required
 def results_overview():
     """List grading and release state for all owned finalized attempts."""
 
@@ -79,8 +78,8 @@ def results_overview():
     )
 
 
-@admin_bp.post("/results/<int:submission_id>/release")
-@admin_required
+@lecturer_bp.post("/results/<int:submission_id>/release")
+@lecturer_required
 def release_result(submission_id: int):
     """Release one completed scheduled result before its configured time."""
 
@@ -96,4 +95,4 @@ def release_result(submission_id: int):
         db.session.commit()
         flash("Candidate result released.", "success")
 
-    return redirect(url_for("admin.results_overview"))
+    return redirect(url_for("lecturer.results_overview"))

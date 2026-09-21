@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block title %}Check your email | MAU-SOAP{% endblock %}
+
+{% block content %}
+  <section class="card auth-card">
+    <span class="status-badge">Registration received</span>
+    <h1>Check your institutional email</h1>
+    <p>
+      We sent a secure verification link{% if email %} to
+      <strong>{{ email }}</strong>{% endif %}. Open it before it expires.
+    </p>
+    <p>
+      Lecturer accounts also require Admin approval after email verification.
+    </p>
+    <a class="secondary-button" href="{{ url_for('accounts.login') }}">
+      Return to login
+    </a>
+  </section>
+{% endblock %}

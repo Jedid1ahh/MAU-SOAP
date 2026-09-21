@@ -34,14 +34,6 @@ class ExamForm(FlaskForm):
         "Examination title",
         validators=[DataRequired(), Length(max=255)],
     )
-    course_code = StringField(
-        "Course code",
-        validators=[DataRequired(), Length(max=50)],
-    )
-    course_title = StringField(
-        "Course title",
-        validators=[DataRequired(), Length(max=255)],
-    )
     instructions = TextAreaField(
         "Candidate instructions",
         validators=[Optional(), Length(max=5000)],

@@ -12,7 +12,7 @@
         <h1>{{ submission.candidate_name }}</h1>
         <p>{{ submission.candidate_email }} · {{ exam.course_code }}</p>
       </div>
-      <a class="secondary-button" href="{{ url_for('admin.grading_queue') }}">
+      <a class="secondary-button" href="{{ url_for('lecturer.grading_queue') }}">
         Back to pending grading
       </a>
     </div>
@@ -28,7 +28,7 @@
 
       <p class="muted-text">
         The score becomes complete when every open-ended response has an
-        Admin-assigned mark. Result release is handled in Phase 10 through the
+        Lecturer-assigned mark. Result release is handled through the
         examination's configured release policy.
       </p>
     </section>
@@ -70,7 +70,7 @@
                   {% endif %}
                 {% else %}
                   <form
-                    action="{{ url_for('admin.grade_open_answer', submission_id=submission.id, grade_id=row.grade.id) }}"
+                    action="{{ url_for('lecturer.grade_open_answer', submission_id=submission.id, grade_id=row.grade.id) }}"
                     method="post"
                   >
                     <input

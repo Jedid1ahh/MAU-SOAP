@@ -3,7 +3,7 @@
 from sqlalchemy import func, select
 
 from app.extensions import bcrypt, db
-from app.models import Exam, Question, Role, User
+from app.models import Course, Exam, Question, Role, User
 
 
 def test_seed_creates_admin_and_development_exam(app):
@@ -75,6 +75,28 @@ def test_seed_can_disable_development_exam(app):
     assert result.exit_code == 0, result.output
     assert db.session.scalar(select(func.count(User.id))) == 1
     assert db.session.scalar(select(func.count(Exam.id))) == 0
+
+
+def test_seed_reuses_existing_development_course(app):
+    app.config["SEED_DUMMY_EXAM"] = False
+    first = app.test_cli_runner().invoke(args=["seed-db"])
+    assert first.exit_code == 0, first.output
+    admin = db.session.scalar(select(User).where(User.role == Role.ADMIN))
+    db.session.add(
+        Course(
+            code="CSC-DEMO",
+            title="Existing development course",
+            created_by=admin,
+        )
+    )
+    db.session.commit()
+
+    app.config["SEED_DUMMY_EXAM"] = True
+    second = app.test_cli_runner().invoke(args=["seed-db"])
+
+    assert second.exit_code == 0, second.output
+    assert db.session.scalar(select(func.count(Course.id))) == 1
+    assert db.session.scalar(select(func.count(Exam.id))) == 1
 
 
 def test_seed_rolls_back_unexpected_database_error(app, monkeypatch):

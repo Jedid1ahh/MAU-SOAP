@@ -2,20 +2,18 @@
 
 from __future__ import annotations
 
-from flask import abort, flash, redirect, render_template, session, url_for
+from flask import abort, flash, redirect, render_template, url_for
+from flask_login import current_user
 from sqlalchemy import select
 
+from app.access import role_required
 from app.extensions import db
 from app.grading import grade_submission
-from app.models import Exam, ResultStatus
+from app.models import Exam, ResultStatus, Role
 from app.result_release import synchronize_result_release
 
 from . import candidate_bp
-from .session_services import resolve_submission_session
-
-
-def _access_session_key(exam: Exam) -> str:
-    return f"candidate_access_token_{exam.id}"
+from .session_services import student_can_access_exam, submission_for_student
 
 
 def _exam_by_token(token: str) -> Exam | None:
@@ -25,18 +23,17 @@ def _exam_by_token(token: str) -> Exam | None:
 
 
 @candidate_bp.get("/<token>/result")
+@role_required(Role.STUDENT)
 def candidate_result(token: str):
-    """Show a released result only to its matching Candidate session."""
+    """Show a released result only to its enrolled, logged-in Student."""
 
     exam = _exam_by_token(token)
     if exam is None:
         abort(404)
 
-    raw_token = session.get(_access_session_key(exam))
-    submission = resolve_submission_session(
-        exam,
-        raw_token if isinstance(raw_token, str) else None,
-    )
+    if not student_can_access_exam(exam, current_user):
+        abort(403)
+    submission = submission_for_student(exam, current_user)
     if submission is None or not submission.is_finalized:
         flash("Candidate result access could not be verified.", "error")
         return redirect(url_for("candidate.exam_landing", token=token))

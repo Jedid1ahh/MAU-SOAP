@@ -8,6 +8,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.extensions import db
 from app.models import (
+    AccountVerificationToken,
     AnswerGrade,
     Exam,
     GradedBy,
@@ -25,6 +26,7 @@ from app.models import (
     ViolationType,
     WarningLog,
 )
+from tests.helpers import course_for
 
 
 def _admin() -> User:
@@ -41,6 +43,7 @@ def _admin() -> User:
 def _exam(admin: User, token: str = "exam-token") -> Exam:
     exam = Exam(
         admin=admin,
+        course=course_for(admin, "CSC 301", "Data Structures"),
         title="Data Structures Examination",
         course_code="CSC 301",
         course_title="Data Structures",
@@ -81,6 +84,7 @@ def test_all_phase_2_tables_are_created(app):
         "verification_tokens",
         "password_reset_tokens",
         "answer_grades",
+        "account_verification_tokens",
     } <= set(inspector.get_table_names())
 
 
@@ -221,3 +225,32 @@ def test_password_reset_token_state(app):
     assert token.is_locked is False
     assert token.is_used is False
     assert "PasswordResetToken" in repr(token)
+
+
+def test_multiple_role_accounts_and_account_verification_relationship(app):
+    now = datetime.now(UTC)
+    first = User(
+        full_name="First Student",
+        email="first@student.mau.edu.ng",
+        password_hash="hashed",
+        role=Role.STUDENT,
+        email_verified_at=now,
+        approved_at=now,
+    )
+    second = User(
+        full_name="Second Student",
+        email="second@student.mau.edu.ng",
+        password_hash="hashed",
+        role=Role.STUDENT,
+    )
+    token = AccountVerificationToken(
+        user=second,
+        token_hash="f" * 64,
+        expires_at=now + timedelta(minutes=60),
+    )
+    db.session.add_all([first, second, token])
+    db.session.commit()
+
+    assert first.can_access_portal is True
+    assert second.can_access_portal is False
+    assert second.account_verification_tokens == [token]

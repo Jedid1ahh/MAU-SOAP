@@ -9,15 +9,17 @@ from flask import (
     redirect,
     render_template,
     request,
-    session,
     url_for,
 )
+from flask_login import current_user
 from sqlalchemy import select
 
+from app.access import role_required
 from app.extensions import db
 from app.models import (
     Exam,
     QuestionType,
+    Role,
     Submission,
     ViolationType,
     WarningLog,
@@ -29,7 +31,7 @@ from .evidence_services import (
     InvalidEvidenceError,
     attach_face_absence_evidence,
 )
-from .services import aware_utc, resolve_candidate_session
+from .services import aware_utc
 from .session_services import (
     ExistingAttemptError,
     FinalizedSubmissionError,
@@ -37,10 +39,11 @@ from .session_services import (
     finalize_submission,
     finalize_warning_limit,
     remaining_seconds,
-    resolve_submission_session,
     save_submission_progress,
     start_submission,
+    student_can_access_exam,
     submission_deadline,
+    submission_for_student,
 )
 from .supervision_services import (
     WARNING_LIMIT,
@@ -63,28 +66,12 @@ def _exam_by_token(token: str) -> Exam:
     return exam
 
 
-def _access_session_key(exam: Exam) -> str:
-    return f"candidate_access_token_{exam.id}"
-
-
-def _raw_session_token(exam: Exam) -> str | None:
-    raw_token = session.get(
-        _access_session_key(exam)
-    )
-    return (
-        raw_token
-        if isinstance(raw_token, str)
-        else None
-    )
-
-
 def _submission_for_request(
     exam: Exam,
 ) -> Submission | None:
-    return resolve_submission_session(
-        exam,
-        _raw_session_token(exam),
-    )
+    if not student_can_access_exam(exam, current_user):
+        return None
+    return submission_for_student(exam, current_user)
 
 
 def _lock_submission(
@@ -243,54 +230,17 @@ def _autosave_response_payload(
 
 
 @candidate_bp.post("/<token>/resume")
+@role_required(Role.STUDENT)
 def resume_exam(token: str):
-    """Restore cookie access from a Candidate's browser-held resume token."""
+    """Resume the logged-in Student's attempt without another credential."""
 
     exam = _exam_by_token(token)
-    payload = request.get_json(
-        silent=True
-    )
-
-    if not isinstance(payload, dict):
-        return jsonify(
-            error=(
-                "A JSON resume request "
-                "is required."
-            )
-        ), 400
-
-    raw_token = payload.get(
-        "resume_token"
-    )
-
-    if (
-        not isinstance(raw_token, str)
-        or len(raw_token) < 20
-        or len(raw_token) > 255
-    ):
-        return jsonify(
-            error="Invalid resume token."
-        ), 400
-
-    submission = (
-        resolve_submission_session(
-            exam,
-            raw_token,
-        )
-    )
+    submission = _submission_for_request(exam)
 
     if submission is None:
         return jsonify(
-            error=(
-                "Saved examination attempt "
-                "not found."
-            )
+            error="Authenticated examination attempt not found."
         ), 404
-
-    session[
-        _access_session_key(exam)
-    ] = raw_token
-    session.permanent = False
 
     if (
         submission.is_finalized
@@ -319,38 +269,13 @@ def resume_exam(token: str):
 
 
 @candidate_bp.post("/<token>/start")
+@role_required(Role.STUDENT)
 def start_exam(token: str):
-    """Start or idempotently reopen the verified Candidate's one attempt."""
+    """Open the enrolled Student's examination and start its timer."""
 
     exam = _exam_by_token(token)
-    raw_token = _raw_session_token(exam)
-
-    verification = (
-        resolve_candidate_session(
-            exam,
-            raw_token,
-        )
-    )
-
-    if (
-        verification is None
-        or raw_token is None
-    ):
-        flash(
-            (
-                "Verify your email address "
-                "before starting this "
-                "examination."
-            ),
-            "error",
-        )
-
-        return redirect(
-            url_for(
-                "candidate.exam_landing",
-                token=token,
-            )
-        )
+    if not student_can_access_exam(exam, current_user):
+        abort(403)
 
     if not exam.questions:
         flash(
@@ -362,43 +287,11 @@ def start_exam(token: str):
         )
 
         return redirect(
-            url_for(
-                "candidate.exam_ready",
-                token=token,
-            )
-        )
-
-    if (
-        request.form.get(
-            "supervision_consent"
-        )
-        != "yes"
-    ):
-        flash(
-            (
-                "You must consent to the "
-                "disclosed camera supervision "
-                "and face-absence evidence "
-                "recording before starting."
-            ),
-            "error",
-        )
-
-        return redirect(
-            url_for(
-                "candidate.exam_ready",
-                token=token,
-            )
+            url_for("student.index")
         )
 
     try:
-        submission, created = (
-            start_submission(
-                exam,
-                verification,
-                raw_token,
-            )
-        )
+        submission, created = start_submission(exam, current_user)
     except ExistingAttemptError:
         db.session.rollback()
 
@@ -412,14 +305,10 @@ def start_exam(token: str):
         )
 
         return redirect(
-            url_for(
-                "candidate.exam_landing",
-                token=token,
-            )
+            url_for("student.index")
         )
 
     db.session.commit()
-    session.permanent = False
 
     if submission.is_finalized:
         return redirect(
@@ -448,8 +337,9 @@ def start_exam(token: str):
 
 
 @candidate_bp.get("/<token>/session")
+@role_required(Role.STUDENT)
 def exam_session(token: str):
-    """Render the active session shell for the matching Candidate token."""
+    """Render the logged-in Student's active examination session."""
 
     exam = _exam_by_token(token)
     submission = (
@@ -500,6 +390,7 @@ def exam_session(token: str):
 @candidate_bp.get(
     "/<token>/session/questions"
 )
+@role_required(Role.STUDENT)
 def session_questions(token: str):
     """Return questions and saved progress to the matching active session."""
 
@@ -538,9 +429,6 @@ def session_questions(token: str):
         warning_count=(
             submission.warn_count
         ),
-        resume_token=(
-            _raw_session_token(exam)
-        ),
         last_saved_at=(
             aware_utc(
                 submission.last_saved_at
@@ -555,6 +443,7 @@ def session_questions(token: str):
 
 
 @candidate_bp.get("/<token>/session/time")
+@role_required(Role.STUDENT)
 def session_time(token: str):
     """Return remaining time calculated only from server-controlled values."""
 
@@ -600,6 +489,7 @@ def session_time(token: str):
 @candidate_bp.post(
     "/<token>/session/autosave"
 )
+@role_required(Role.STUDENT)
 def autosave_exam(token: str):
     """Persist a validated in-progress answer snapshot for safe resume."""
 
@@ -678,6 +568,7 @@ def autosave_exam(token: str):
 @candidate_bp.post(
     "/<token>/session/violations"
 )
+@role_required(Role.STUDENT)
 def report_violation(token: str):
     """Validate and persist one active-session supervision event."""
 
@@ -813,6 +704,7 @@ def report_violation(token: str):
     "/<token>/session/violations/"
     "<int:warning_id>/evidence"
 )
+@role_required(Role.STUDENT)
 def upload_violation_evidence(
     token: str,
     warning_id: int,
@@ -916,6 +808,7 @@ def upload_violation_evidence(
 @candidate_bp.post(
     "/<token>/session/submit"
 )
+@role_required(Role.STUDENT)
 def submit_exam(token: str):
     """Accept the Candidate's answers exactly once before server expiry."""
 
@@ -970,6 +863,7 @@ def submit_exam(token: str):
 
 
 @candidate_bp.get("/<token>/submitted")
+@role_required(Role.STUDENT)
 def submission_received(token: str):
     """Confirm final receipt without exposing grading before Phase 9."""
 

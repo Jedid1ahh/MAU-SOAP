@@ -1,4 +1,4 @@
-"""Phase 9 Admin automatic and manual grading routes."""
+"""Lecturer automatic and manual grading routes."""
 
 from __future__ import annotations
 
@@ -13,6 +13,8 @@ from app.grading import (
     assign_manual_grade,
     grade_submission,
 )
+from app.lecturer import lecturer_bp
+from app.lecturer.auth import lecturer_required
 from app.models import (
     AnswerGrade,
     Exam,
@@ -21,13 +23,11 @@ from app.models import (
     Submission,
 )
 
-from . import admin_bp
-from .auth import admin_required
 from .grading_forms import ManualGradeForm
 
 
 def _owned_submission(submission_id: int) -> Submission:
-    """Load one finalized submission owned by the authenticated Admin."""
+    """Load one finalized submission owned by the authenticated Lecturer."""
 
     submission = db.session.scalar(
         select(Submission)
@@ -92,8 +92,8 @@ def _render_submission(
     )
 
 
-@admin_bp.get("/grading")
-@admin_required
+@lecturer_bp.get("/grading")
+@lecturer_required
 def grading_queue():
     """List finalized submissions still awaiting manual review."""
 
@@ -137,8 +137,8 @@ def grading_queue():
     )
 
 
-@admin_bp.get("/grading/submissions/<int:submission_id>")
-@admin_required
+@lecturer_bp.get("/grading/submissions/<int:submission_id>")
+@lecturer_required
 def grade_submission_view(submission_id: int):
     """Show every response and its current grading state."""
 
@@ -151,10 +151,10 @@ def grade_submission_view(submission_id: int):
     )
 
 
-@admin_bp.post(
+@lecturer_bp.post(
     "/grading/submissions/<int:submission_id>/answers/<int:grade_id>"
 )
-@admin_required
+@lecturer_required
 def grade_open_answer(submission_id: int, grade_id: int):
     """Assign marks to one pending open-ended response."""
 
@@ -189,7 +189,7 @@ def grade_open_answer(submission_id: int, grade_id: int):
             flash("Open-ended response graded.", "success")
             return redirect(
                 url_for(
-                    "admin.grade_submission_view",
+                    "lecturer.grade_submission_view",
                     submission_id=submission.id,
                 )
             )

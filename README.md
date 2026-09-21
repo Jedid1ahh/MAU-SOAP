@@ -1,50 +1,63 @@
 # MAU-SOAP
 
-MAU-SOAP is the Modibbo Adama University browser-based examination and
-supervision platform. This repository currently contains **Phase 1**: a clean,
-tested Flask application foundation with PostgreSQL connectivity.
+MAU-SOAP is the Modibbo Adama University browser-based secure online
+assessment and supervision platform. The application currently includes the
+verified functionality from Phases 1–13, including course-centered Admin,
+Lecturer, and Student portals.
 
-## Phase 1 contents
+## Current capabilities
 
-- Flask application factory
-- Separate `main`, `admin`, `candidate`, and `api` blueprints
-- Environment-based configuration and secret handling
-- PostgreSQL development service through Docker Compose
-- Reusable Flask extensions, initialized without circular imports
-- Application and database health endpoints
-- Unit tests for configuration, routing, and database connectivity
-- Git-ready ignore rules and documented branch strategy
+- One pre-provisioned Admin account for accounts, course creation, and
+  Lecturer assignment; no Admin registration
+- Lecturer registration with exact `@mau.edu.ng` validation, email
+  verification, and Admin approval
+- Student registration with exact `@student.mau.edu.ng` validation
+- One login page for all roles, with credential-based redirection to the
+  Admin, Lecturer, or Student dashboard
+- Role-isolated Admin, Lecturer, and Student dashboards
+- Admin-created courses assigned to exactly one Lecturer at a time, with full
+  workspace transfer on reassignment
+- Lecturer-owned examination/question management, live supervision, grading,
+  and result release, isolated by assigned course
+- Registered-Student invitations, acceptance, enrollment, and course rosters
+- Logged-in, accepted-enrollment-only examination access with no second OTP
+  or email prompt
+- Server-authoritative timing, autosave/resume, supervision warnings, and
+  third-warning auto-submission
+- Automatic and manual grading
+- Immediate and scheduled result release, with ungraded open-ended results
+  withheld
+- Student examinations, attempts, and results grouped by enrolled course
+- Direct exam opening from the Student dashboard; anonymous, cross-role, and
+  non-enrolled access is rejected server-side
 
-Feature logic such as authentication, exam management, verification, exam
-sessions, and grading belongs to later phases and is deliberately absent.
+A full assignment-resource workflow is not yet implemented; the current
+course workspace covers invitations, enrollments, examinations, grading, and
+results.
 
 ## Project structure
 
 ```text
 MAU-SOAP/
 ├── app/
-│   ├── admin/          # Admin routes (features begin in Phase 3)
-│   ├── api/            # JSON endpoints and health checks
-│   ├── candidate/      # Candidate routes (features begin in Phase 5)
-│   ├── main/           # Public landing page
-│   ├── static/         # CSS and later browser-side assets
-│   ├── templates/      # Shared Jinja templates
-│   ├── __init__.py     # Application factory
-│   ├── config.py       # Environment-specific settings
-│   └── extensions.py   # Unbound Flask extensions
-├── docs/               # Phase-specific setup and testing instructions
-│   └── specifications/ # Approved Execution.md and Phases.md source of truth
-├── tests/              # Automated unit tests
-├── compose.yaml        # Local PostgreSQL 16 service
+│   ├── accounts/       # Role-aware login and Lecturer/Student registration
+│   ├── admin/          # Admin authentication and system oversight
+│   ├── api/            # JSON health and session endpoints
+│   ├── candidate/      # Authenticated Student examination sessions
+│   ├── lecturer/       # Lecturer portal
+│   ├── student/        # Student portal and result access
+│   ├── models/         # SQLAlchemy models
+│   ├── static/         # CSS, JavaScript, and MediaPipe assets
+│   └── templates/      # Shared Jinja templates
+├── docs/specifications/# Requirements and phase roadmap
+├── migrations/         # Alembic database migrations
+├── tests/              # Automated tests
 ├── requirements.txt    # Runtime dependencies
-├── requirements-dev.txt# Testing/development dependencies
+├── requirements-dev.txt# Development dependencies
 └── wsgi.py             # Flask/Gunicorn entry point
 ```
 
 ## Quick start
-
-Detailed Windows, macOS, and Linux instructions are in
-[`docs/PHASE_1_TESTING.md`](docs/PHASE_1_TESTING.md).
 
 ```bash
 python -m venv .venv
@@ -52,26 +65,35 @@ source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -r requirements-dev.txt
 cp .env.example .env
-docker compose up -d db
-flask run
+python -m flask db upgrade
+python -m flask seed-db
+python -m flask run
 ```
 
-Open <http://127.0.0.1:5000> and verify the database at
-<http://127.0.0.1:5000/api/v1/health/database>.
+On Git Bash for Windows, activate with `source .venv/Scripts/activate`.
 
-Run all Phase 1 checks with:
+The default `.env.example` database URL targets local XAMPP/MariaDB. Replace
+all placeholder secrets in the private `.env` before running the system.
+
+When upgrading from Phase 11, the migration preserves every existing exam by
+creating an unassigned legacy course for each existing course code. After the
+upgrade, log in as Admin and assign those courses to approved Lecturers; the
+complete exam workspace transfers with the assignment.
+
+## Verification
 
 ```bash
-pytest
-ruff check .
+python -m pytest
+python -m ruff check .
+python -m flask db check
+git diff --check
 ```
 
 ## Branch strategy
 
 - `main` contains verified phase milestones.
-- `develop` is the integration branch for the next phase.
-- `feature/<short-name>` branches contain focused changes and merge into
-  `develop` after their tests pass.
+- `develop` is available for integration work.
+- `feature/<short-name>` branches contain focused changes.
 
-No secret, `.env` file, virtual environment, database volume, or generated test
-artifact should be committed.
+Never commit `.env`, `.venv`, database data, supervision evidence, `.agents`,
+`.codex`, or `skills-lock.json`.

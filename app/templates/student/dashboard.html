@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block title %}Student dashboard | MAU-SOAP{% endblock %}
+
+{% block content %}
+  <section class="dashboard-shell">
+    <div class="page-heading">
+      <div>
+        <span class="eyebrow">Verified Student account</span>
+        <h1>Student dashboard</h1>
+        <p>Welcome, <strong>{{ current_user.full_name }}</strong>.</p>
+      </div>
+    </div>
+
+    {% if pending_enrollments %}
+      <section class="card questions-card">
+        <div class="card-heading">
+          <div>
+            <span class="eyebrow">New invitations</span>
+            <h2>Courses waiting for you</h2>
+          </div>
+          <span class="status-badge status-pending">
+            {{ pending_enrollments|length }} pending
+          </span>
+        </div>
+        <div class="exam-grid">
+          {% for enrollment in pending_enrollments %}
+            <article class="card exam-card">
+              <span class="status-badge">{{ enrollment.course.code }}</span>
+              <h3>{{ enrollment.course.title }}</h3>
+              {% if enrollment.invited_by %}
+                <p>Invited by {{ enrollment.invited_by.full_name }}</p>
+              {% endif %}
+              <form
+                method="post"
+                action="{{ url_for('student.accept_invitation', enrollment_id=enrollment.id) }}"
+              >
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="primary-button button-auto" type="submit">
+                  Accept invitation
+                </button>
+              </form>
+            </article>
+          {% endfor %}
+        </div>
+      </section>
+    {% endif %}
+
+    {% if accepted_enrollments %}
+      {% for enrollment in accepted_enrollments %}
+        <section class="card questions-card">
+          <div class="card-heading">
+            <div>
+              <span class="status-badge">{{ enrollment.course.code }}</span>
+              <h2>{{ enrollment.course.title }}</h2>
+            </div>
+            <span class="muted-text">
+              {{ enrollment.course.exams|length }} examination(s)
+            </span>
+          </div>
+          {% if enrollment.course.exams %}
+            <div class="exam-grid">
+              {% for exam in enrollment.course.exams %}
+                {% set submission = submissions_by_exam.get(exam.id) %}
+                <article class="card exam-card">
+                  <div class="card-heading">
+                    {% if submission and not submission.is_finalized %}
+                      <span class="status-badge status-pending">In progress</span>
+                    {% elif submission and submission.result and submission.result.is_released %}
+                      <span class="status-badge">Result released</span>
+                    {% elif submission %}
+                      <span class="status-badge status-pending">Result pending</span>
+                    {% else %}
+                      <span class="status-badge">Available</span>
+                    {% endif %}
+                  </div>
+                  <h3>{{ exam.title }}</h3>
+                  <p>{{ exam.time_limit_minutes }} minutes</p>
+                  {% if submission and submission.is_finalized %}
+                    <a
+                      class="secondary-button"
+                      href="{{ url_for('student.result', submission_id=submission.id) }}"
+                    >
+                      Check result
+                    </a>
+                  {% else %}
+                    <p class="muted-text">
+                      Opening starts the server timer and examination supervision.
+                    </p>
+                    <form
+                      method="post"
+                      action="{{ url_for('candidate.start_exam', token=exam.exam_link_token) }}"
+                    >
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                      <button class="primary-button button-auto" type="submit">
+                        {{ "Resume examination" if submission else "Open examination" }}
+                      </button>
+                    </form>
+                  {% endif %}
+                </article>
+              {% endfor %}
+            </div>
+          {% else %}
+            <p class="muted-text">No examinations are available for this course yet.</p>
+          {% endif %}
+        </section>
+      {% endfor %}
+    {% elif not pending_enrollments %}
+      <section class="card empty-state">
+        <h2>No courses yet</h2>
+        <p>
+          Course invitations from your Lecturers will appear here. Accept an
+          invitation to access that course's examinations and results.
+        </p>
+      </section>
+    {% endif %}
+  </section>
+{% endblock %}

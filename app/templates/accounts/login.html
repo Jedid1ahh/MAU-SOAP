@@ -1,16 +1,18 @@
 {% extends "base.html" %}
 
-{% block title %}Admin login | MAU-SOAP{% endblock %}
+{% block title %}Login | MAU-SOAP{% endblock %}
 
 {% block content %}
   <section class="card auth-card">
-    <span class="eyebrow">Secure Admin access</span>
-    <h1>Welcome back</h1>
-    <p>Log in with the pre-provisioned MAU-SOAP administrator account.</p>
+    <span class="eyebrow">Institutional access</span>
+    <h1>Login</h1>
+    <p>
+      Use your MAU-SOAP account. You will be sent to the Admin, Lecturer, or
+      Student dashboard assigned to your credentials.
+    </p>
 
     <form method="post" novalidate>
       {{ form.hidden_tag() }}
-
       <div class="form-group">
         {{ form.email.label }}
         {{ form.email(autocomplete="username", inputmode="email") }}
@@ -18,7 +20,6 @@
           <span class="field-error">{{ error }}</span>
         {% endfor %}
       </div>
-
       <div class="form-group">
         {{ form.password.label }}
         {{ form.password(autocomplete="current-password") }}
@@ -26,14 +27,19 @@
           <span class="field-error">{{ error }}</span>
         {% endfor %}
       </div>
-
       {{ form.submit(class="primary-button") }}
     </form>
 
-    <p class="auth-footer">
-      <a href="{{ url_for('admin.request_password_reset') }}">
-        Forgot your password?
+    <div class="auth-options">
+      <a href="{{ url_for('accounts.register_student') }}">
+        Create Student account
       </a>
-    </p>
+      <a href="{{ url_for('accounts.register_lecturer') }}">
+        Register as Lecturer
+      </a>
+      <a href="{{ url_for('admin.request_password_reset') }}">
+        Forgot Admin password?
+      </a>
+    </div>
   </section>
 {% endblock %}

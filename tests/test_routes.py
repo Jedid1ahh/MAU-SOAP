@@ -10,21 +10,21 @@ def test_landing_page(client):
 
     assert response.status_code == 200
     assert b"MAU-SOAP" in response.data
-    assert b"Phase 1 running" in response.data
+    assert b"Secure online assessment" in response.data
 
 
 def test_admin_area_requires_login(client):
     response = client.get("/admin/")
 
     assert response.status_code == 302
-    assert "/admin/login" in response.headers["Location"]
+    assert "/account/login" in response.headers["Location"]
 
 
-def test_candidate_placeholder(client):
+def test_candidate_area_requires_student_login(client):
     response = client.get("/exam/")
 
-    assert response.status_code == 200
-    assert b"Candidate area" in response.data
+    assert response.status_code == 302
+    assert "/account/login" in response.headers["Location"]
 
 
 def test_service_health(client):
@@ -53,4 +53,3 @@ def test_database_health_failure_returns_safe_response(client, monkeypatch):
     assert response.status_code == 503
     assert response.get_json() == {"database": "unavailable", "status": "error"}
     assert b"private driver detail" not in response.data
-

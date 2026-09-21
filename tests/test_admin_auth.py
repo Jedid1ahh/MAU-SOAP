@@ -19,8 +19,8 @@ def test_login_page_is_available_without_registration(client):
     response = client.get("/admin/login")
 
     assert response.status_code == 200
-    assert b"Welcome back" in response.data
-    assert b"Forgot your password?" in response.data
+    assert b"<h1>Login</h1>" in response.data
+    assert b"Forgot Admin password?" in response.data
 
     for path in ("/admin/register", "/admin/signup"):
         assert client.get(path).status_code == 404
@@ -35,8 +35,8 @@ def test_valid_admin_login_reaches_protected_dashboard(client, admin):
 
     dashboard = client.get("/admin/")
     assert dashboard.status_code == 200
-    assert b"Authenticated" in dashboard.data
-    assert admin.email.encode() in dashboard.data
+    assert b"System administration" in dashboard.data
+    assert b"Manage institutional accounts" in dashboard.data
 
 
 def test_authenticated_admin_is_redirected_away_from_login(client, admin):

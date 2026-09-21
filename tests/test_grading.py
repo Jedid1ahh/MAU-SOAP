@@ -30,11 +30,13 @@ from app.models import (
     ResultStatus,
     Submission,
 )
+from tests.helpers import course_for
 
 
 def _exam(admin, *, token="grading-exam", include_open=True):
     exam = Exam(
         admin_id=admin.id,
+        course=course_for(admin, "CSC 420", "Distributed Systems"),
         title="Distributed Systems",
         course_code="CSC 420",
         course_title="Distributed Systems",
@@ -115,12 +117,12 @@ def _submission(
     return submission
 
 
-def _login(client):
+def _login(client, lecturer):
     response = client.post(
-        "/admin/login",
+        "/account/login",
         data={
-            "email": "admin@mau.edu.ng",
-            "password": "Phase3TestPassword!",
+            "email": lecturer.email,
+            "password": "LecturerTestPassword!",
         },
     )
     assert response.status_code == 302
@@ -224,6 +226,7 @@ def test_unanswered_automatic_questions_receive_zero(admin):
 def test_empty_finalized_exam_produces_zero_complete_result(admin):
     exam = Exam(
         admin_id=admin.id,
+        course=course_for(admin, "LEG 000", "Legacy data"),
         title="Empty legacy examination",
         course_code="LEG 000",
         course_title="Legacy data",
@@ -268,7 +271,7 @@ def test_manual_grade_completes_result_and_preserves_automatic_marks(admin):
     db.session.commit()
 
     assert pending.awarded_marks == Decimal("4.25")
-    assert pending.graded_by is GradedBy.ADMIN
+    assert pending.graded_by is GradedBy.LECTURER
     assert pending.grader is admin
     assert pending.graded_at is not None
     assert pending.feedback == "Clear explanation."
@@ -278,7 +281,7 @@ def test_manual_grade_completes_result_and_preserves_automatic_marks(admin):
 
     grade_submission(submission)
     assert pending.awarded_marks == Decimal("4.25")
-    assert pending.graded_by is GradedBy.ADMIN
+    assert pending.graded_by is GradedBy.LECTURER
 
 
 @pytest.mark.parametrize(
@@ -339,14 +342,16 @@ def test_finalization_services_grade_manual_and_warning_submissions(admin):
     assert warning.result.status is ResultStatus.PENDING_MANUAL_REVIEW
 
 
-def test_admin_queue_backfills_and_lists_only_pending_submissions(client, admin):
-    pending_exam = _exam(admin, token="pending-queue")
+def test_lecturer_queue_backfills_and_lists_only_pending_submissions(
+    client, lecturer
+):
+    pending_exam = _exam(lecturer, token="pending-queue")
     pending = _submission(
         pending_exam,
         responses=_responses(pending_exam),
     )
     complete_exam = _exam(
-        admin,
+        lecturer,
         token="complete-queue",
         include_open=False,
     )
@@ -357,9 +362,9 @@ def test_admin_queue_backfills_and_lists_only_pending_submissions(client, admin)
     )
     assert pending.result is None
     assert complete.result is None
-    _login(client)
+    _login(client, lecturer)
 
-    response = client.get("/admin/grading")
+    response = client.get("/lecturer/grading")
 
     assert response.status_code == 200
     assert b"Pending grading" in response.data
@@ -370,11 +375,11 @@ def test_admin_queue_backfills_and_lists_only_pending_submissions(client, admin)
     assert response.data.count(b"Review responses") == 1
 
 
-def test_empty_grading_queue_and_dashboard_navigation(client, admin):
-    _login(client)
+def test_empty_grading_queue_and_dashboard_navigation(client, lecturer):
+    _login(client, lecturer)
 
-    dashboard = client.get("/admin/")
-    queue = client.get("/admin/grading")
+    dashboard = client.get("/lecturer/")
+    queue = client.get("/lecturer/grading")
 
     assert dashboard.status_code == 200
     assert b"Pending grading" in dashboard.data
@@ -382,36 +387,36 @@ def test_empty_grading_queue_and_dashboard_navigation(client, admin):
     assert b"No responses are awaiting review" in queue.data
 
 
-def test_grading_routes_require_admin_login(client, admin):
-    exam = _exam(admin)
+def test_grading_routes_require_lecturer_login(client, lecturer):
+    exam = _exam(lecturer)
     submission = _submission(exam, responses=_responses(exam))
 
-    queue = client.get("/admin/grading")
-    detail = client.get(f"/admin/grading/submissions/{submission.id}")
+    queue = client.get("/lecturer/grading")
+    detail = client.get(f"/lecturer/grading/submissions/{submission.id}")
 
     assert queue.status_code == 302
-    assert "/admin/login" in queue.headers["Location"]
+    assert "/account/login" in queue.headers["Location"]
     assert detail.status_code == 302
-    assert "/admin/login" in detail.headers["Location"]
+    assert "/account/login" in detail.headers["Location"]
 
 
-def test_admin_can_review_and_grade_open_response(client, admin):
-    exam = _exam(admin)
+def test_lecturer_can_review_and_grade_open_response(client, lecturer):
+    exam = _exam(lecturer)
     submission = _submission(exam, responses=_responses(exam))
-    _login(client)
+    _login(client, lecturer)
 
-    detail = client.get(f"/admin/grading/submissions/{submission.id}")
+    detail = client.get(f"/lecturer/grading/submissions/{submission.id}")
     pending = _pending_grade(submission)
 
     assert detail.status_code == 200
     assert b"Candidate responses" in detail.data
     assert b"Replicas converge after updates stop." in detail.data
     assert b"Pending Manual Review" in detail.data
-    assert b"Result release is handled in Phase 10" in detail.data
+    assert b"Result release is handled" in detail.data
 
     response = client.post(
         (
-            f"/admin/grading/submissions/{submission.id}"
+            f"/lecturer/grading/submissions/{submission.id}"
             f"/answers/{pending.id}"
         ),
         data={
@@ -422,7 +427,7 @@ def test_admin_can_review_and_grade_open_response(client, admin):
 
     assert response.status_code == 302
     assert response.headers["Location"].endswith(
-        f"/admin/grading/submissions/{submission.id}"
+        f"/lecturer/grading/submissions/{submission.id}"
     )
     assert pending.awarded_marks == Decimal("4.50")
     assert pending.feedback == "Good comparison."
@@ -432,7 +437,7 @@ def test_admin_can_review_and_grade_open_response(client, admin):
     assert b"Complete" in completed.data
     assert b"9.50 / 10.00" in completed.data
 
-    queue = client.get("/admin/grading")
+    queue = client.get("/lecturer/grading")
     assert b"No responses are awaiting review" in queue.data
 
 
@@ -453,20 +458,20 @@ def test_admin_can_review_and_grade_open_response(client, admin):
 )
 def test_manual_grading_endpoint_rejects_invalid_forms(
     client,
-    admin,
+    lecturer,
     data,
     expected_message,
 ):
-    exam = _exam(admin)
+    exam = _exam(lecturer)
     submission = _submission(exam, responses=_responses(exam))
     grade_submission(submission)
     db.session.commit()
     pending = _pending_grade(submission)
-    _login(client)
+    _login(client, lecturer)
 
     response = client.post(
         (
-            f"/admin/grading/submissions/{submission.id}"
+            f"/lecturer/grading/submissions/{submission.id}"
             f"/answers/{pending.id}"
         ),
         data=data,
@@ -480,12 +485,12 @@ def test_manual_grading_endpoint_rejects_invalid_forms(
 
 def test_manual_grading_rejects_unknown_mismatched_and_automatic_grades(
     client,
-    admin,
+    lecturer,
 ):
-    first_exam = _exam(admin, token="first-grading")
+    first_exam = _exam(lecturer, token="first-grading")
     first = _submission(first_exam, responses=_responses(first_exam))
     grade_submission(first)
-    second_exam = _exam(admin, token="second-grading")
+    second_exam = _exam(lecturer, token="second-grading")
     second = _submission(
         second_exam,
         email="second@gmail.com",
@@ -495,19 +500,19 @@ def test_manual_grading_rejects_unknown_mismatched_and_automatic_grades(
     db.session.commit()
     second_pending = _pending_grade(second)
     first_automatic = first.answer_grades[0]
-    _login(client)
+    _login(client, lecturer)
 
-    unknown_submission = client.get("/admin/grading/submissions/999999")
+    unknown_submission = client.get("/lecturer/grading/submissions/999999")
     mismatched = client.post(
         (
-            f"/admin/grading/submissions/{first.id}"
+            f"/lecturer/grading/submissions/{first.id}"
             f"/answers/{second_pending.id}"
         ),
         data={"awarded_marks": "1"},
     )
     automatic = client.post(
         (
-            f"/admin/grading/submissions/{first.id}"
+            f"/lecturer/grading/submissions/{first.id}"
             f"/answers/{first_automatic.id}"
         ),
         data={"awarded_marks": "1"},
@@ -518,11 +523,13 @@ def test_manual_grading_rejects_unknown_mismatched_and_automatic_grades(
     assert automatic.status_code == 404
 
 
-def test_nonfinal_submission_is_not_available_for_admin_grading(client, admin):
-    exam = _exam(admin)
+def test_nonfinal_submission_is_not_available_for_lecturer_grading(
+    client, lecturer
+):
+    exam = _exam(lecturer)
     active = _submission(exam, finalized=False)
-    _login(client)
+    _login(client, lecturer)
 
-    response = client.get(f"/admin/grading/submissions/{active.id}")
+    response = client.get(f"/lecturer/grading/submissions/{active.id}")
 
     assert response.status_code == 404

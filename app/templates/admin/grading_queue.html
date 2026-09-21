@@ -10,7 +10,7 @@
         <h1>Pending grading</h1>
         <p>Review open-ended Candidate responses and assign their marks.</p>
       </div>
-      <a class="secondary-button" href="{{ url_for('admin.index') }}">
+      <a class="secondary-button" href="{{ url_for('lecturer.index') }}">
         Back to dashboard
       </a>
     </div>
@@ -43,7 +43,7 @@
             </dl>
             <a
               class="secondary-button"
-              href="{{ url_for('admin.grade_submission_view', submission_id=submission.id) }}"
+              href="{{ url_for('lecturer.grade_submission_view', submission_id=submission.id) }}"
             >
               Review responses
             </a>

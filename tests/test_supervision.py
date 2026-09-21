@@ -25,6 +25,7 @@ from app.models import (
     ViolationType,
     WarningLog,
 )
+from tests.helpers import authenticate_enrolled_student, course_for
 
 
 def _exam(
@@ -35,6 +36,7 @@ def _exam(
 ):
     exam = Exam(
         admin_id=admin.id,
+        course=course_for(admin, "CSC 408", "Computer Networks"),
         title="Computer Networks",
         course_code="CSC 408",
         course_title="Computer Networks",
@@ -79,6 +81,13 @@ def _active_submission(
 
     db.session.add(submission)
     db.session.commit()
+
+    authenticate_enrolled_student(
+        client,
+        exam,
+        email=submission.candidate_email,
+        name=submission.candidate_name,
+    )
 
     with client.session_transaction() as candidate_session:
         candidate_session[
@@ -192,11 +201,8 @@ def test_violation_endpoint_requires_matching_active_session(
         },
     )
 
-    assert response.status_code == 403
-
-    assert response.get_json() == {
-        "error": "Candidate session required."
-    }
+    assert response.status_code == 302
+    assert "/account/login" in response.headers["Location"]
 
     assert db.session.scalar(
         select(WarningLog)

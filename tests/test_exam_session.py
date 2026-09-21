@@ -30,11 +30,13 @@ from app.models import (
     Submission,
     VerificationToken,
 )
+from tests.helpers import authenticate_enrolled_student, course_for
 
 
 def _exam(admin, *, token="phase-six-exam", with_questions=True):
     exam = Exam(
         admin_id=admin.id,
+        course=course_for(admin, "CSC 406", "Distributed Systems"),
         title="Distributed Systems",
         course_code="CSC 406",
         course_title="Distributed Systems",
@@ -92,6 +94,7 @@ def _verified_access(
     name="Amina Bello",
     email="amina@gmail.com",
 ):
+    authenticate_enrolled_student(client, exam, email=email, name=name)
     now = datetime.now(UTC)
 
     verification = VerificationToken(
@@ -145,7 +148,7 @@ def _started_submission(
     return submission
 
 
-def test_start_requires_verified_access_and_questions(
+def test_start_requires_logged_in_student(
     client,
     admin,
 ):
@@ -156,42 +159,17 @@ def test_start_requires_verified_access_and_questions(
     )
 
     assert unauthorized.status_code == 302
-    assert unauthorized.headers["Location"].endswith(
-        f"/exam/{exam.exam_link_token}"
-    )
+    assert "/account/login" in unauthorized.headers["Location"]
 
     assert db.session.scalar(
         select(Submission)
     ) is None
 
 
-def test_start_requires_supervision_recording_consent(
+def test_start_rejects_exam_without_questions(
     client,
     admin,
 ):
-    exam = _exam(admin)
-    _verified_access(client, exam)
-
-    response = client.post(
-        f"/exam/{exam.exam_link_token}/start"
-    )
-
-    assert response.status_code == 302
-    assert response.headers["Location"].endswith(
-        f"/exam/{exam.exam_link_token}/ready"
-    )
-
-    assert db.session.scalar(
-        select(Submission)
-    ) is None
-
-    ready = client.get(
-        response.headers["Location"]
-    )
-
-    assert b"Camera recording notice" in ready.data
-    assert b"supervision_consent" in ready.data
-
     empty_exam = _exam(
         admin,
         token="empty-exam",
@@ -210,7 +188,7 @@ def test_start_requires_supervision_recording_consent(
 
     assert empty.status_code == 302
     assert empty.headers["Location"].endswith(
-        f"/exam/{empty_exam.exam_link_token}/ready"
+        "/student/"
     )
 
     assert db.session.scalar(
@@ -279,7 +257,7 @@ def test_start_creates_one_idempotent_attempt_and_locks_exam(
     assert b"candidate-session-token" not in page.data
 
 
-def test_different_verified_token_cannot_claim_existing_attempt(
+def test_logged_in_student_resumes_existing_attempt_without_reverification(
     client,
     admin,
 ):
@@ -309,7 +287,7 @@ def test_different_verified_token_cannot_claim_existing_attempt(
 
     assert response.status_code == 302
     assert response.headers["Location"].endswith(
-        f"/exam/{exam.exam_link_token}"
+        f"/exam/{exam.exam_link_token}/session"
     )
 
     assert db.session.scalar(
@@ -317,7 +295,7 @@ def test_different_verified_token_cannot_claim_existing_attempt(
     ) == 1
 
 
-def test_session_pages_require_matching_started_token(
+def test_session_pages_require_logged_in_student(
     client,
     admin,
 ):
@@ -344,15 +322,10 @@ def test_session_pages_require_matching_started_token(
     )
 
     assert session_page.status_code == 302
-    assert questions.status_code == 403
-
-    assert questions.get_json() == {
-        "error": "Candidate session required.",
-    }
-
-    assert timing.status_code == 403
+    assert questions.status_code == 302
+    assert timing.status_code == 302
     assert receipt.status_code == 302
-    assert unknown.status_code == 404
+    assert unknown.status_code == 302
 
 
 def test_question_endpoint_never_exposes_grading_answers(
@@ -647,9 +620,7 @@ def test_submit_requires_started_session(
     )
 
     assert response.status_code == 302
-    assert response.headers["Location"].endswith(
-        f"/exam/{exam.exam_link_token}"
-    )
+    assert "/account/login" in response.headers["Location"]
 
 
 def test_expired_manual_payload_is_not_accepted(

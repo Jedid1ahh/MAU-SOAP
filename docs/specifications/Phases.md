@@ -10,10 +10,10 @@ build sequence. Each phase maps to the specific FR/NFR IDs defined in `Execution
 |---|---|
 | Requirements Gathering | Complete — captured in `Execution.md` |
 | System Analysis & Design | Complete — captured in `Execution.md` + schema/diagram files |
-| Implementation | Phases 1–10 below |
-| Testing & Evaluation | Phases 11, 13 below |
-| Deployment | Phase 12 below |
-| Documentation (outside the original 5-phase model, added as necessary) | Phase 14 below |
+| Implementation | Phases 1–13 below |
+| Testing & Evaluation | Phases 14, 16 below |
+| Deployment | Phase 15 below |
+| Documentation (outside the original 5-phase model, added as necessary) | Phase 17 below |
 
 ---
 
@@ -47,11 +47,16 @@ gantt
     P9 Grading Engine               :p9, after p6, 14d
     P10 Result Management           :p10, after p9, 7d
 
+    section Institutional Portals
+    P11 Multi-role Accounts         :p11, after p10, 7d
+    P12 Lecturer Dashboard          :p12, after p11, 10d
+    P13 Student Dashboard           :p13, after p11, 7d
+
     section QA & Launch
-    P11 Integration Testing         :p11, after p8 p10, 7d
-    P12 Deployment                  :p12, after p11, 7d
-    P13 UAT & TAM Evaluation        :p13, after p12, 7d
-    P14 Documentation & Handover    :p14, after p13, 7d
+    P14 Integration Testing         :p14, after p12 p13, 7d
+    P15 Deployment                  :p15, after p14, 7d
+    P16 UAT & TAM Evaluation        :p16, after p15, 7d
+    P17 Documentation & Handover    :p17, after p16, 7d
 ```
 
 ---
@@ -63,17 +68,20 @@ gantt
 | 1 | Environment & Project Setup | — | Runnable Flask app connected to PostgreSQL, in Git |
 | 2 | Database Schema Implementation | — | Fully migrated database matching Execution.md's schema |
 | 3 | Admin Authentication & Account Management | FR1, FR2, FR13, FR15, NFR2 | Default Admin provisioning plus working login/logout/reset; no registration |
-| 4 | Exam Management (Admin CRUD) | FR3, FR4, FR5, FR16 | Admin can build a full exam and get a shareable link |
-| 5 | Candidate Verification | FR6, NFR7, NFR8 | Candidate reaches exam-loading screen via OTP/magic link |
+| 4 | Exam Management Foundation | FR3, FR4, FR5, FR16 | Full exam lifecycle foundation, transferred to Lecturers in Phase 12 |
+| 5 | Candidate Verification (superseded) | Historical FR6, NFR7, NFR8 | Replaced by authenticated Student access in Phase 13 |
 | 6 | Exam Session Core | FR18, FR19, part of FR10 | Server-timed session, question delivery, basic submit |
 | 7 | Supervision Features | FR7, FR8, FR9 | Copy-paste block, screenshot detection, webcam monitoring live |
-| 8 | Auto-Submit, Autosave/Resume, Live Alerts | FR10, FR17, FR9 (alert portion) | Session resilience + real-time Admin visibility |
+| 8 | Auto-Submit, Autosave/Resume, Live Alerts | FR10, FR17, FR9 (alert portion) | Session resilience + real-time owner visibility |
 | 9 | Grading Engine | FR11, FR14 | Auto-grading + manual review queue |
 | 10 | Result Management & Scheduled Release | FR12 | Immediate and unattended scheduled release working, with ungraded open-ended results withheld |
-| 11 | Integration & System Testing | NFR4, NFR5 | Passing test suite, documented end-to-end run |
-| 12 | Deployment | NFR3, NFR5, NFR6 | Live system at mausoap.com.ng over HTTPS |
-| 13 | User Acceptance Testing & TAM Evaluation | Proposal Objective iii | UAT results feeding Chapter Four |
-| 14 | Documentation & Handover | NFR6 | Setup, schema, and runbook docs handed to the university |
+| 11 | Multi-role Accounts & Permissions | FR20–FR22, NFR2 | Lecturer/Student registration, verification, approval, and role isolation |
+| 12 | Course Administration & Lecturer Workspace | FR22, FR23 | Admin assignment plus Lecturer-owned exams, supervision, grading, results, invitations, and roster |
+| 13 | Student Course Dashboard | FR24 | Invitation acceptance and course-grouped exams/results in one protected portal |
+| 14 | Integration & System Testing | NFR4, NFR5 | Passing test suite, documented end-to-end run |
+| 15 | Deployment | NFR3, NFR5, NFR6 | Live system at mausoap.com.ng over HTTPS |
+| 16 | User Acceptance Testing & TAM Evaluation | Proposal Objective iii | UAT results feeding Chapter Four |
+| 17 | Documentation & Handover | NFR6 | Setup, schema, and runbook docs handed to the university |
 
 ---
 
@@ -118,21 +126,25 @@ gantt
 **Deliverable:** The default Admin can log in, log out, and reset the password; attempts to access any registration path are unavailable.
 **Tools:** Flask-Login, Flask-Bcrypt, Flask-Mail, Python `secrets`
 
-### Phase 4 — Exam Management (Admin CRUD)
+### Phase 4 — Exam Management Foundation
 **Covers:** FR3, FR4, FR5, FR16
-**Objective:** Allow Admins to create, configure, edit, and delete exams and questions.
+**Objective:** Build the exam lifecycle foundation. Its day-to-day ownership is
+transferred from Admin to assigned Lecturers in Phase 12.
 **Tasks:**
 - Exam creation form/route (title, course info, supervision settings)
 - Configure only the time limit and monitor type per exam; enforce the warning limit as a fixed system-wide value of 3
 - Question creation for all three types (mcq / open_ended / short_answer), with `options` JSON for MCQ using key-based options
 - Generate a CSPRNG `exam_link_token` on creation
 - Edit/delete routes, guarded by a check that blocks structural changes as soon as any Candidate has a submission/session record with `started_at`
-- Admin dashboard listing the Admin's own exams
+- Initial management dashboard, superseded by the course-centered Lecturer workspace
 **Dependencies:** Phase 3
-**Deliverable:** An Admin can fully build an exam end-to-end and obtain a shareable link.
+**Deliverable:** A complete, secure exam lifecycle ready for role transfer.
 **Tools:** Flask, Jinja2, SQLAlchemy, Python `secrets`
 
 ### Phase 5 — Candidate Verification (OTP + Magic Link)
+
+> Historical implementation: Phase 13 retires this per-exam flow in favor of
+> the logged-in Student account plus accepted course enrollment.
 **Covers:** FR6, NFR7, NFR8
 **Objective:** Implement the passwordless candidate verification flow.
 **Tasks:**
@@ -174,16 +186,16 @@ gantt
 **Deliverable:** All three supervision mechanisms actively detecting and logging violations during a live session.
 **Tools:** MediaPipe Tasks Vision (JS), browser MediaDevices API, vanilla JS, Flask
 
-### Phase 8 — Auto-Submission, Autosave/Resume, and Admin Live Alerting
+### Phase 8 — Auto-Submission, Autosave/Resume, and Live Alerting
 **Covers:** FR10, FR17, FR9 (alert portion)
-**Objective:** Close the loop on session resilience and live Admin oversight.
+**Objective:** Close the loop on session resilience and live examination-owner oversight.
 **Tasks:**
 - Fixed warning-limit check that triggers auto-submission immediately when `warn_count` reaches 3
 - Periodic autosave (debounced) of in-progress responses
 - Resume endpoint restoring responses, remaining time, and warn count via the resume token
-- Admin live-warnings polling endpoint and dashboard widget showing active candidates' violations as they occur
+- Live-warnings polling endpoint and Lecturer dashboard widget showing active candidates' violations as they occur
 **Dependencies:** Phase 7
-**Deliverable:** A dropped connection doesn't lose progress; an Admin watching the dashboard sees violations in near-real-time; threshold breaches auto-submit correctly.
+**Deliverable:** A dropped connection doesn't lose progress; the responsible Lecturer sees violations in near-real-time; threshold breaches auto-submit correctly.
 **Tools:** Vanilla JS, Flask, SQLAlchemy (JSONB), browser `localStorage`
 
 ### Phase 9 — Grading Engine
@@ -192,7 +204,7 @@ gantt
 **Tasks:**
 - AutoGrade routine: exact-key match for MCQ, configurable case/space-tolerant matching for short-answer
 - Create an `answer_grades` row per question on submission (NULL `awarded_marks` for open-ended)
-- Admin "pending review" queue listing flagged responses
+- Lecturer "pending review" queue listing flagged responses
 - Manual mark-assignment endpoint; recompute `Result.status` once every row for a submission is graded
 **Dependencies:** Phase 6 (needs real submissions to grade — can proceed in parallel with Phases 7–8)
 **Deliverable:** A submitted exam is scored automatically where possible and clearly queued for manual grading where not.
@@ -200,9 +212,9 @@ gantt
 
 ### Phase 10 — Result Management & Scheduled Release
 **Covers:** FR12
-**Objective:** Give Admins control over when results become visible, including unattended scheduled release.
+**Objective:** Give Lecturers control over when results become visible, including unattended scheduled release.
 **Tasks:**
-- Immediate-release path, triggered by Admin action
+- Immediate-release path, triggered by Lecturer action
 - Internal `/internal/release-results` endpoint, protected by an internal auth key
 - Cron job configuration hitting that endpoint on an interval
 - Scheduled-release eligibility check requiring `Result.status == complete`; keep results with ungraded open-ended responses withheld for reconsideration on the next scheduled run
@@ -212,7 +224,50 @@ gantt
 **Deliverable:** Both release modes work end-to-end, including the fully automated scheduled path.
 **Tools:** Linux `cron`, Flask, Flask-Mail (optional)
 
-### Phase 11 — Integration & System Testing
+### Phase 11 — Multi-role Accounts & Permissions
+**Covers:** FR20, FR21, FR22, NFR2
+**Objective:** Expand the single-Admin/unregistered-Candidate model into isolated Admin, Lecturer, and Student accounts with one role-aware login.
+**Tasks:**
+- Keep the Admin pre-provisioned with no registration route
+- Add Lecturer registration restricted to `@mau.edu.ng`, email verification, and Admin approval
+- Add Student registration restricted to `@student.mau.edu.ng` and email verification
+- Add Admin account oversight for approval, suspension, and restoration
+- Enforce server-side role checks for every protected portal route
+- Replace per-exam OTP/magic-link verification with authenticated Student access
+**Dependencies:** Phase 10
+**Deliverable:** Three isolated account roles with tested registration, verification, approval, login, and access controls.
+**Tools:** Flask-Login, Flask-WTF, Flask-Mail, Flask-Bcrypt, SQLAlchemy
+
+### Phase 12 — Course Administration & Lecturer Workspace
+**Covers:** FR23
+**Objective:** Restrict Admin to system/account/course administration and move the
+complete examination lifecycle into isolated, course-centered Lecturer workspaces.
+**Tasks:**
+- Admin creates courses and assigns each course to exactly one approved Lecturer
+- Allow one Lecturer to own multiple courses; transfer the complete workspace when reassigned
+- Lecturer-owned exam/question creation and editing inside assigned courses
+- Lecturer-specific monitoring feed, grading queue, and result management
+- Lecturer invitation of registered `@student.mau.edu.ng` accounts and course roster visibility
+- Ownership checks preventing access to another Lecturer's courses or data
+**Dependencies:** Phase 11
+**Deliverable:** Admin manages institutional structure; an approved Lecturer manages the
+complete lifecycle of only the courses currently assigned to them.
+
+### Phase 13 — Student Dashboard
+**Covers:** FR24
+**Objective:** Give each verified Student an invitation-driven, course-centered portal.
+**Tasks:**
+- Display pending course invitations and allow explicit acceptance
+- Enroll a Student only after acceptance; support enrollment in multiple courses
+- Group examinations, attempts, and results under their respective courses
+- Show pending/released result state and detailed released results
+- Require a logged-in Student and accepted course enrollment before every exam action
+- Prevent one Student from reading another Student's submissions or results
+**Dependencies:** Phase 11
+**Deliverable:** A verified Student can accept courses, enter their enrolled examinations
+securely, and review only their own course-grouped history and released results.
+
+### Phase 14 — Integration & System Testing
 **Covers:** NFR4, NFR5
 **Objective:** Verify the whole pipeline end-to-end and catch integration issues across Phases 3–10.
 **Tasks:**
@@ -220,14 +275,14 @@ gantt
 - Authorization/behavior tests confirming that no Admin registration endpoint exists and only the seeded default Admin can authenticate
 - Exam-lock test confirming that the first Candidate start prevents structural editing/deletion before final submission
 - Scheduled-release test confirming that results with ungraded open-ended responses remain withheld until grading is complete
-- Manual end-to-end test: full lifecycle from admin exam creation through candidate verification, exam-taking, violations, auto-submit/resume, grading, and release
+- Manual end-to-end test: unified login, Admin course assignment, Lecturer exam creation and Student invitation, Student acceptance, direct exam-taking, violations, auto-submit/resume, grading, and release
 - Light load/performance smoke test simulating multiple concurrent candidates
 - Security review: token entropy, hashed storage, HTTPS-only cookies, SQL-injection safety via the ORM
-**Dependencies:** Phases 8 and 10 both complete
+**Dependencies:** Phases 12 and 13 both complete
 **Deliverable:** Passing test suite, a documented end-to-end test run, and a resolved (or logged) known-issues list.
 **Tools:** pytest, Postman
 
-### Phase 12 — Deployment (Production Infrastructure)
+### Phase 15 — Deployment (Production Infrastructure)
 **Covers:** NFR3, NFR5, NFR6
 **Objective:** Move the system from local development to production at mausoap.com.ng.
 **Tasks:**
@@ -237,15 +292,15 @@ gantt
 - Configure Nginx as a reverse proxy in front of Gunicorn
 - Obtain and configure a TLS certificate via Let's Encrypt/Certbot; enforce HTTPS
 - Set production environment variables/secrets (never committed to Git)
-- Set `CANDIDATE_EMAIL_DOMAIN=mau.edu.ng` before final production use; retain `gmail.com` only for development and controlled testing
+- Set `CANDIDATE_EMAIL_DOMAIN=student.mau.edu.ng` and `LECTURER_EMAIL_DOMAIN=mau.edu.ng`
 - Configure the production cron job for scheduled result release
 - Set up automated PostgreSQL backups
 - Point the mausoap.com.ng domain at the server
-**Dependencies:** Phase 11
+**Dependencies:** Phase 14
 **Deliverable:** A live, HTTPS-secured system accessible at mausoap.com.ng.
 **Tools:** Gunicorn, Nginx, Certbot, cron, `pg_dump`
 
-### Phase 13 — User Acceptance Testing & TAM Evaluation
+### Phase 16 — User Acceptance Testing & TAM Evaluation
 **Covers:** Proposal Objective iii (usability/effectiveness evaluation), Chapter Four (TAM survey)
 **Objective:** Validate the deployed system with real users per the study's methodology (purposive sample: 5 lecturers, 25 students).
 **Tasks:**
@@ -253,11 +308,11 @@ gantt
 - Run a pilot exam with real Admin and Candidate participants
 - Administer the TAM questionnaire (Perceived Usefulness / Perceived Ease of Use)
 - Collect and analyze feedback; log any usability issues or bugs found
-**Dependencies:** Phase 12
+**Dependencies:** Phase 15
 **Deliverable:** UAT results feeding into Chapter Four of the project report; critical fixes looped back into a patch release.
 **Tools:** Survey instrument (outside the software stack)
 
-### Phase 14 — Documentation & Handover
+### Phase 17 — Documentation & Handover
 **Covers:** NFR6
 **Objective:** Ensure the university can maintain and extend the system after project completion.
 **Tasks:**
@@ -266,7 +321,7 @@ gantt
 - Document the database schema (ERD + table reference)
 - Document a deployment runbook (redeploying, rotating secrets, restarting services)
 - Finalize the project report, referencing `Execution.md` and this document
-**Dependencies:** Phase 13
+**Dependencies:** Phase 16
 **Deliverable:** Complete documentation package handed over alongside the codebase.
 **Tools:** Markdown, Git repository README
 
@@ -276,6 +331,6 @@ gantt
 
 The proposal explicitly adopts an *Iterative* Waterfall model (Fig. 3.5), permitting
 movement back to an earlier phase when testing surfaces an issue. In practice this means,
-for example, a bug found in Phase 11 tracing back to the grading logic in Phase 9 should
-be fixed in Phase 9 and re-verified in Phase 11 — not patched over in testing. The phase
+for example, a bug found in Phase 14 tracing back to the grading logic in Phase 9 should
+be fixed in Phase 9 and re-verified in Phase 14 — not patched over in testing. The phase
 order above is the intended build sequence, not a one-way gate.
