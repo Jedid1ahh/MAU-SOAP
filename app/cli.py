@@ -13,6 +13,7 @@ from sqlalchemy import select
 
 from .extensions import bcrypt, db
 from .models import (
+    Course,
     Exam,
     MonitorType,
     Question,
@@ -78,8 +79,22 @@ def _seed_dummy_exam(admin: User) -> tuple[Exam, bool]:
     if existing_exam is not None:
         return existing_exam, False
 
+    course = db.session.scalar(
+        select(Course).where(Course.code == "CSC-DEMO")
+    )
+    if course is None:
+        course = Course(
+            code="CSC-DEMO",
+            title="Introduction to Computer Science",
+            description="Development seed course.",
+            created_by=admin,
+        )
+        db.session.add(course)
+        db.session.flush()
+
     exam = Exam(
         admin=admin,
+        course=course,
         title="MAU-SOAP Development Examination",
         course_code="CSC-DEMO",
         course_title="Introduction to Computer Science",

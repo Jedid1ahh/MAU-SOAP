@@ -15,10 +15,11 @@ from flask import (
 )
 from flask_login import current_user, login_user, logout_user
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from app.access import portal_endpoint
 from app.extensions import bcrypt, db
-from app.models import Exam, PasswordResetToken, Role, User
+from app.models import Course, PasswordResetToken, Role, User
 
 from . import admin_bp
 from .auth import admin_required
@@ -87,15 +88,19 @@ def logout():
 @admin_bp.get("/")
 @admin_required
 def index():
-    """Render the Admin's Phase 4 examination dashboard."""
+    """Render system account and course-assignment oversight."""
 
-    exams = db.session.scalars(
-        select(Exam)
-        .where(Exam.admin_id == current_user.id)
-        .order_by(Exam.created_at.desc())
+    courses = db.session.scalars(
+        select(Course)
+        .options(
+            selectinload(Course.lecturer),
+            selectinload(Course.exams),
+            selectinload(Course.enrollments),
+        )
+        .order_by(Course.code)
     ).all()
 
-    return render_template("admin/dashboard.html", exams=exams)
+    return render_template("admin/dashboard.html", courses=courses)
 
 @admin_bp.route("/password-reset", methods=["GET", "POST"])
 def request_password_reset():

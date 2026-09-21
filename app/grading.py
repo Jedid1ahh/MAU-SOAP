@@ -22,7 +22,7 @@ MARK_PRECISION = Decimal("0.01")
 
 
 class InvalidManualGradeError(ValueError):
-    """Raised when an Admin mark is outside the question's valid range."""
+    """Raised when a manual mark is outside the question's valid range."""
 
 
 def utc_now() -> datetime:
@@ -154,7 +154,7 @@ def assign_manual_grade(
     grader: User,
     feedback: str | None = None,
 ) -> Result:
-    """Assign a bounded Admin mark and refresh the aggregate result."""
+    """Assign a bounded Lecturer mark and refresh the aggregate result."""
 
     if grade.question.question_type is not QuestionType.OPEN_ENDED:
         raise InvalidManualGradeError(
@@ -177,7 +177,7 @@ def assign_manual_grade(
         )
 
     grade.awarded_marks = normalized_marks
-    grade.graded_by = GradedBy.ADMIN
+    grade.graded_by = GradedBy.LECTURER
     grade.grader = grader
     grade.feedback = (feedback or "").strip() or None
     grade.graded_at = utc_now()

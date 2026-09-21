@@ -30,11 +30,13 @@ from app.models import (
     Submission,
     VerificationToken,
 )
+from tests.helpers import course_for
 
 
 def _exam(admin, *, token="phase-six-exam", with_questions=True):
     exam = Exam(
         admin_id=admin.id,
+        course=course_for(admin, "CSC 406", "Distributed Systems"),
         title="Distributed Systems",
         course_code="CSC 406",
         course_title="Distributed Systems",

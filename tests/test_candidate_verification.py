@@ -18,12 +18,17 @@ from app.candidate.services import (
 )
 from app.extensions import db, mail
 from app.models import (
+    CourseEnrollment,
+    EnrollmentStatus,
     Exam,
     MonitorType,
     ReleaseOption,
+    Role,
     Submission,
+    User,
     VerificationToken,
 )
+from tests.helpers import course_for
 
 
 def _exam(
@@ -34,6 +39,9 @@ def _exam(
 ):
     exam = Exam(
         admin_id=admin.id,
+        course=course_for(
+            admin, "CSC 402", "Enterprise Database Management"
+        ),
         title=title,
         course_code="CSC 402",
         course_title="Enterprise Database Management",
@@ -55,6 +63,37 @@ def _request_verification(
     name="Amina Bello",
         email="AMINA@STUDENT.MAU.EDU.NG",
 ):
+    normalized_email = email.strip().casefold()
+    if normalized_email.endswith("@student.mau.edu.ng"):
+        student = db.session.scalar(
+            select(User).where(User.email == normalized_email)
+        )
+        if student is None:
+            student = User(
+                full_name=name,
+                email=normalized_email,
+                password_hash="test-password-hash",
+                role=Role.STUDENT,
+                email_verified_at=datetime.now(UTC),
+            )
+            db.session.add(student)
+            db.session.flush()
+        enrollment = db.session.scalar(
+            select(CourseEnrollment).where(
+                CourseEnrollment.course_id == exam.course_id,
+                CourseEnrollment.student_id == student.id,
+            )
+        )
+        if enrollment is None:
+            db.session.add(
+                CourseEnrollment(
+                    course=exam.course,
+                    student=student,
+                    status=EnrollmentStatus.ACCEPTED,
+                    accepted_at=datetime.now(UTC),
+                )
+            )
+            db.session.commit()
     with mail.record_messages() as outbox:
         response = client.post(
             f"/exam/{exam.exam_link_token}",
@@ -338,12 +377,11 @@ def test_email_failure_rolls_back_verification(
         fail_delivery,
     )
 
-    response = client.post(
-        f"/exam/{exam.exam_link_token}",
-        data={
-            "name": "Amina Bello",
-                "email": "amina@student.mau.edu.ng",
-        },
+    response, _ = _request_verification(
+        client,
+        exam,
+        name="Amina Bello",
+        email="amina@student.mau.edu.ng",
     )
 
     assert response.status_code == 200

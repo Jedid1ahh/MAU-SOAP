@@ -17,6 +17,8 @@ from .enums import Role
 if TYPE_CHECKING:
     from .account_verification_token import AccountVerificationToken
     from .answer_grade import AnswerGrade
+    from .course import Course
+    from .course_enrollment import CourseEnrollment
     from .exam import Exam
     from .password_reset_token import PasswordResetToken
 
@@ -49,6 +51,24 @@ class User(UserMixin, TimestampMixin, db.Model):
         back_populates="admin",
         cascade="all, delete-orphan",
         passive_deletes=True,
+    )
+    assigned_courses: Mapped[list[Course]] = relationship(
+        back_populates="lecturer",
+        foreign_keys="Course.lecturer_id",
+    )
+    created_courses: Mapped[list[Course]] = relationship(
+        back_populates="created_by",
+        foreign_keys="Course.created_by_admin_id",
+    )
+    course_enrollments: Mapped[list[CourseEnrollment]] = relationship(
+        back_populates="student",
+        foreign_keys="CourseEnrollment.student_id",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    sent_course_invitations: Mapped[list[CourseEnrollment]] = relationship(
+        back_populates="invited_by",
+        foreign_keys="CourseEnrollment.invited_by_lecturer_id",
     )
     password_reset_tokens: Mapped[list[PasswordResetToken]] = relationship(
         back_populates="user",

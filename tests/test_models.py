@@ -26,6 +26,7 @@ from app.models import (
     ViolationType,
     WarningLog,
 )
+from tests.helpers import course_for
 
 
 def _admin() -> User:
@@ -42,6 +43,7 @@ def _admin() -> User:
 def _exam(admin: User, token: str = "exam-token") -> Exam:
     exam = Exam(
         admin=admin,
+        course=course_for(admin, "CSC 301", "Data Structures"),
         title="Data Structures Examination",
         course_code="CSC 301",
         course_title="Data Structures",

@@ -1,4 +1,4 @@
-"""Authenticated Admin supervision feed and evidence delivery."""
+"""Authenticated Lecturer supervision feed and evidence delivery."""
 
 from __future__ import annotations
 
@@ -20,15 +20,14 @@ from app.candidate.evidence_services import (
     purge_expired_evidence,
 )
 from app.extensions import db
+from app.lecturer import lecturer_bp
+from app.lecturer.auth import lecturer_required
 from app.models import (
     Exam,
     Submission,
     ViolationType,
     WarningLog,
 )
-
-from . import admin_bp
-from .auth import admin_required
 
 
 def _owned_warning(warning_id: int) -> WarningLog:
@@ -144,11 +143,11 @@ def _event_payload(warning: WarningLog) -> dict:
                 "uploaded_at":
                     warning.evidence_uploaded_at.isoformat(),
                 "view_url": url_for(
-                    "admin.view_supervision_evidence",
+                    "lecturer.view_supervision_evidence",
                     warning_id=warning.id,
                 ),
                 "download_url": url_for(
-                    "admin.download_supervision_evidence",
+                    "lecturer.download_supervision_evidence",
                     warning_id=warning.id,
                 ),
             }
@@ -158,8 +157,8 @@ def _event_payload(warning: WarningLog) -> dict:
     }
 
 
-@admin_bp.get("/supervision/events")
-@admin_required
+@lecturer_bp.get("/supervision/events")
+@lecturer_required
 def supervision_events():
     """Return warnings for near-real-time dashboard polling."""
 
@@ -225,15 +224,15 @@ def _serve_evidence(
     return response
 
 
-@admin_bp.get(
+@lecturer_bp.get(
     "/supervision/warnings/"
     "<int:warning_id>/evidence"
 )
-@admin_required
+@lecturer_required
 def view_supervision_evidence(
     warning_id: int,
 ):
-    """Stream private evidence to its owning Admin."""
+    """Stream private evidence to its owning Lecturer."""
 
     return _serve_evidence(
         warning_id,
@@ -241,15 +240,15 @@ def view_supervision_evidence(
     )
 
 
-@admin_bp.get(
+@lecturer_bp.get(
     "/supervision/warnings/"
     "<int:warning_id>/evidence/download"
 )
-@admin_required
+@lecturer_required
 def download_supervision_evidence(
     warning_id: int,
 ):
-    """Download private evidence to the Admin computer."""
+    """Download private evidence to the Lecturer computer."""
 
     return _serve_evidence(
         warning_id,

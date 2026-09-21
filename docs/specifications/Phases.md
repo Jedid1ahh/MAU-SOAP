@@ -68,16 +68,16 @@ gantt
 | 1 | Environment & Project Setup | — | Runnable Flask app connected to PostgreSQL, in Git |
 | 2 | Database Schema Implementation | — | Fully migrated database matching Execution.md's schema |
 | 3 | Admin Authentication & Account Management | FR1, FR2, FR13, FR15, NFR2 | Default Admin provisioning plus working login/logout/reset; no registration |
-| 4 | Exam Management (Admin CRUD) | FR3, FR4, FR5, FR16 | Admin can build a full exam and get a shareable link |
+| 4 | Exam Management Foundation | FR3, FR4, FR5, FR16 | Full exam lifecycle foundation, transferred to Lecturers in Phase 12 |
 | 5 | Candidate Verification | FR6, NFR7, NFR8 | Candidate reaches exam-loading screen via OTP/magic link |
 | 6 | Exam Session Core | FR18, FR19, part of FR10 | Server-timed session, question delivery, basic submit |
 | 7 | Supervision Features | FR7, FR8, FR9 | Copy-paste block, screenshot detection, webcam monitoring live |
-| 8 | Auto-Submit, Autosave/Resume, Live Alerts | FR10, FR17, FR9 (alert portion) | Session resilience + real-time Admin visibility |
+| 8 | Auto-Submit, Autosave/Resume, Live Alerts | FR10, FR17, FR9 (alert portion) | Session resilience + real-time owner visibility |
 | 9 | Grading Engine | FR11, FR14 | Auto-grading + manual review queue |
 | 10 | Result Management & Scheduled Release | FR12 | Immediate and unattended scheduled release working, with ungraded open-ended results withheld |
 | 11 | Multi-role Accounts & Permissions | FR20–FR22, NFR2 | Lecturer/Student registration, verification, approval, and role isolation |
-| 12 | Lecturer Dashboard | FR23 | Lecturer-owned examination lifecycle and oversight |
-| 13 | Student Dashboard | FR24 | Student attempts and released results in one protected portal |
+| 12 | Course Administration & Lecturer Workspace | FR22, FR23 | Admin assignment plus Lecturer-owned exams, supervision, grading, results, invitations, and roster |
+| 13 | Student Course Dashboard | FR24 | Invitation acceptance and course-grouped exams/results in one protected portal |
 | 14 | Integration & System Testing | NFR4, NFR5 | Passing test suite, documented end-to-end run |
 | 15 | Deployment | NFR3, NFR5, NFR6 | Live system at mausoap.com.ng over HTTPS |
 | 16 | User Acceptance Testing & TAM Evaluation | Proposal Objective iii | UAT results feeding Chapter Four |
@@ -126,18 +126,19 @@ gantt
 **Deliverable:** The default Admin can log in, log out, and reset the password; attempts to access any registration path are unavailable.
 **Tools:** Flask-Login, Flask-Bcrypt, Flask-Mail, Python `secrets`
 
-### Phase 4 — Exam Management (Admin CRUD)
+### Phase 4 — Exam Management Foundation
 **Covers:** FR3, FR4, FR5, FR16
-**Objective:** Allow Admins to create, configure, edit, and delete exams and questions.
+**Objective:** Build the exam lifecycle foundation. Its day-to-day ownership is
+transferred from Admin to assigned Lecturers in Phase 12.
 **Tasks:**
 - Exam creation form/route (title, course info, supervision settings)
 - Configure only the time limit and monitor type per exam; enforce the warning limit as a fixed system-wide value of 3
 - Question creation for all three types (mcq / open_ended / short_answer), with `options` JSON for MCQ using key-based options
 - Generate a CSPRNG `exam_link_token` on creation
 - Edit/delete routes, guarded by a check that blocks structural changes as soon as any Candidate has a submission/session record with `started_at`
-- Admin dashboard listing the Admin's own exams
+- Initial management dashboard, superseded by the course-centered Lecturer workspace
 **Dependencies:** Phase 3
-**Deliverable:** An Admin can fully build an exam end-to-end and obtain a shareable link.
+**Deliverable:** A complete, secure exam lifecycle ready for role transfer.
 **Tools:** Flask, Jinja2, SQLAlchemy, Python `secrets`
 
 ### Phase 5 — Candidate Verification (OTP + Magic Link)
@@ -182,16 +183,16 @@ gantt
 **Deliverable:** All three supervision mechanisms actively detecting and logging violations during a live session.
 **Tools:** MediaPipe Tasks Vision (JS), browser MediaDevices API, vanilla JS, Flask
 
-### Phase 8 — Auto-Submission, Autosave/Resume, and Admin Live Alerting
+### Phase 8 — Auto-Submission, Autosave/Resume, and Live Alerting
 **Covers:** FR10, FR17, FR9 (alert portion)
-**Objective:** Close the loop on session resilience and live Admin oversight.
+**Objective:** Close the loop on session resilience and live examination-owner oversight.
 **Tasks:**
 - Fixed warning-limit check that triggers auto-submission immediately when `warn_count` reaches 3
 - Periodic autosave (debounced) of in-progress responses
 - Resume endpoint restoring responses, remaining time, and warn count via the resume token
-- Admin live-warnings polling endpoint and dashboard widget showing active candidates' violations as they occur
+- Live-warnings polling endpoint and Lecturer dashboard widget showing active candidates' violations as they occur
 **Dependencies:** Phase 7
-**Deliverable:** A dropped connection doesn't lose progress; an Admin watching the dashboard sees violations in near-real-time; threshold breaches auto-submit correctly.
+**Deliverable:** A dropped connection doesn't lose progress; the responsible Lecturer sees violations in near-real-time; threshold breaches auto-submit correctly.
 **Tools:** Vanilla JS, Flask, SQLAlchemy (JSONB), browser `localStorage`
 
 ### Phase 9 — Grading Engine
@@ -200,7 +201,7 @@ gantt
 **Tasks:**
 - AutoGrade routine: exact-key match for MCQ, configurable case/space-tolerant matching for short-answer
 - Create an `answer_grades` row per question on submission (NULL `awarded_marks` for open-ended)
-- Admin "pending review" queue listing flagged responses
+- Lecturer "pending review" queue listing flagged responses
 - Manual mark-assignment endpoint; recompute `Result.status` once every row for a submission is graded
 **Dependencies:** Phase 6 (needs real submissions to grade — can proceed in parallel with Phases 7–8)
 **Deliverable:** A submitted exam is scored automatically where possible and clearly queued for manual grading where not.
@@ -208,9 +209,9 @@ gantt
 
 ### Phase 10 — Result Management & Scheduled Release
 **Covers:** FR12
-**Objective:** Give Admins control over when results become visible, including unattended scheduled release.
+**Objective:** Give Lecturers control over when results become visible, including unattended scheduled release.
 **Tasks:**
-- Immediate-release path, triggered by Admin action
+- Immediate-release path, triggered by Lecturer action
 - Internal `/internal/release-results` endpoint, protected by an internal auth key
 - Cron job configuration hitting that endpoint on an interval
 - Scheduled-release eligibility check requiring `Result.status == complete`; keep results with ungraded open-ended responses withheld for reconsideration on the next scheduled run
@@ -234,27 +235,34 @@ gantt
 **Deliverable:** Three isolated account roles with tested registration, verification, approval, login, and access controls.
 **Tools:** Flask-Login, Flask-WTF, Flask-Mail, Flask-Bcrypt, SQLAlchemy
 
-### Phase 12 — Lecturer Dashboard
+### Phase 12 — Course Administration & Lecturer Workspace
 **Covers:** FR23
-**Objective:** Move day-to-day examination ownership from the Admin-only interface into an isolated Lecturer workspace while retaining Admin oversight.
+**Objective:** Restrict Admin to system/account/course administration and move the
+complete examination lifecycle into isolated, course-centered Lecturer workspaces.
 **Tasks:**
-- Lecturer-owned exam/question creation and editing
-- Lecturer-specific monitoring feed, grading queue, and results
-- Ownership checks preventing access to another Lecturer's data
-- Admin system-wide visibility without transferring ownership accidentally
+- Admin creates courses and assigns each course to exactly one approved Lecturer
+- Allow one Lecturer to own multiple courses; transfer the complete workspace when reassigned
+- Lecturer-owned exam/question creation and editing inside assigned courses
+- Lecturer-specific monitoring feed, grading queue, and result management
+- Lecturer invitation of registered `@student.mau.edu.ng` accounts and course roster visibility
+- Ownership checks preventing access to another Lecturer's courses or data
 **Dependencies:** Phase 11
-**Deliverable:** An approved Lecturer can manage the complete lifecycle of only their own examinations.
+**Deliverable:** Admin manages institutional structure; an approved Lecturer manages the
+complete lifecycle of only the courses currently assigned to them.
 
 ### Phase 13 — Student Dashboard
 **Covers:** FR24
-**Objective:** Give each verified Student a persistent view of attempts and released results.
+**Objective:** Give each verified Student an invitation-driven, course-centered portal.
 **Tasks:**
-- Show in-progress and completed attempts by normalized institutional email
+- Display pending course invitations and allow explicit acceptance
+- Enroll a Student only after acceptance; support enrollment in multiple courses
+- Group examinations, attempts, and results under their respective courses
 - Show pending/released result state and detailed released results
-- Integrate secure examination links with an authenticated Student identity
+- Require accepted course enrollment before exam-link OTP/magic-link verification
 - Prevent one Student from reading another Student's submissions or results
 **Dependencies:** Phase 11
-**Deliverable:** A verified Student can enter examinations securely and review only their own history and released results.
+**Deliverable:** A verified Student can accept courses, enter their enrolled examinations
+securely, and review only their own course-grouped history and released results.
 
 ### Phase 14 — Integration & System Testing
 **Covers:** NFR4, NFR5
@@ -264,7 +272,7 @@ gantt
 - Authorization/behavior tests confirming that no Admin registration endpoint exists and only the seeded default Admin can authenticate
 - Exam-lock test confirming that the first Candidate start prevents structural editing/deletion before final submission
 - Scheduled-release test confirming that results with ungraded open-ended responses remain withheld until grading is complete
-- Manual end-to-end test: full lifecycle from admin exam creation through candidate verification, exam-taking, violations, auto-submit/resume, grading, and release
+- Manual end-to-end test: Admin course assignment, Lecturer exam creation and Student invitation, Student acceptance and verification, exam-taking, violations, auto-submit/resume, grading, and release
 - Light load/performance smoke test simulating multiple concurrent candidates
 - Security review: token entropy, hashed storage, HTTPS-only cookies, SQL-injection safety via the ORM
 **Dependencies:** Phases 12 and 13 both complete

@@ -25,11 +25,13 @@ from app.models import (
     ViolationType,
     WarningLog,
 )
+from tests.helpers import course_for
 
 
 def _active_attempt(client, admin):
     exam = Exam(
         admin_id=admin.id,
+        course=course_for(admin, "CSC 499", "Secure Systems"),
         title="Secure Systems",
         course_code="CSC 499",
         course_title="Secure Systems",
@@ -111,12 +113,12 @@ def _evidence_payload(
     return values
 
 
-def _login_admin(client):
+def _login_lecturer(client, lecturer):
     response = client.post(
-        "/admin/login",
+        "/account/login",
         data={
-            "email": "admin@mau.edu.ng",
-            "password": "Phase3TestPassword!",
+            "email": lecturer.email,
+            "password": "LecturerTestPassword!",
         },
     )
 
@@ -125,12 +127,12 @@ def _login_admin(client):
 
 def test_face_absence_evidence_upload_feed_view_and_download(
     client,
-    admin,
+    lecturer,
     app,
 ):
     exam, submission = _active_attempt(
         client,
-        admin,
+        lecturer,
     )
 
     client.post(
@@ -206,11 +208,11 @@ def test_face_absence_evidence_upload_feed_view_and_download(
         b"webm-video-evidence"
     )
 
-    _login_admin(client)
+    _login_lecturer(client, lecturer)
 
-    dashboard = client.get("/admin/")
+    dashboard = client.get("/lecturer/")
     feed = client.get(
-        "/admin/supervision/events"
+        "/lecturer/supervision/events"
     )
     event = feed.get_json()["events"][0]
 
@@ -283,11 +285,11 @@ def test_face_absence_evidence_upload_feed_view_and_download(
 
 def test_admin_feed_describes_pending_unavailable_and_nonvideo_events(
     client,
-    admin,
+    lecturer,
 ):
     exam, submission = _active_attempt(
         client,
-        admin,
+        lecturer,
     )
 
     pending_id = _face_warning(
@@ -326,10 +328,10 @@ def test_admin_feed_describes_pending_unavailable_and_nonvideo_events(
     )
     db.session.commit()
 
-    _login_admin(client)
+    _login_lecturer(client, lecturer)
 
     events = client.get(
-        "/admin/supervision/events"
+        "/lecturer/supervision/events"
     ).get_json()["events"]
 
     by_id = {
@@ -385,12 +387,12 @@ def test_admin_feed_describes_pending_unavailable_and_nonvideo_events(
 
 def test_evidence_routes_enforce_candidate_and_admin_ownership(
     client,
-    admin,
+    lecturer,
     app,
 ):
     exam, submission = _active_attempt(
         client,
-        admin,
+        lecturer,
     )
     warning_id = _face_warning(client, exam)
 
@@ -442,27 +444,27 @@ def test_evidence_routes_enforce_candidate_and_admin_ownership(
     anonymous_admin = app.test_client()
 
     protected = anonymous_admin.get(
-        f"/admin/supervision/warnings/"
+        f"/lecturer/supervision/warnings/"
         f"{warning_id}/evidence"
     )
 
     assert protected.status_code == 302
     assert (
-        "/admin/login"
+        "/account/login"
         in protected.headers["Location"]
     )
 
-    _login_admin(client)
+    _login_lecturer(client, lecturer)
 
     missing_admin_warning = client.get(
-        "/admin/supervision/warnings/"
+        "/lecturer/supervision/warnings/"
         "999999/evidence"
     )
 
     assert missing_admin_warning.status_code == 404
 
     absent_evidence = client.get(
-        f"/admin/supervision/warnings/"
+        f"/lecturer/supervision/warnings/"
         f"{warning_id}/evidence"
     )
 
@@ -478,7 +480,7 @@ def test_evidence_routes_enforce_candidate_and_admin_ownership(
     db.session.commit()
 
     missing_file = client.get(
-        f"/admin/supervision/warnings/"
+        f"/lecturer/supervision/warnings/"
         f"{warning_id}/evidence"
     )
 
@@ -687,10 +689,10 @@ def test_private_directory_falls_back_to_instance_path(
 
 def test_expired_evidence_is_deleted_and_feed_retains_audit_status(
     client,
-    admin,
+    lecturer,
     monkeypatch,
 ):
-    exam, _ = _active_attempt(client, admin)
+    exam, _ = _active_attempt(client, lecturer)
     warning_id = _face_warning(client, exam)
 
     client.post(
@@ -729,10 +731,10 @@ def test_expired_evidence_is_deleted_and_feed_retains_audit_status(
         lambda: now,
     )
 
-    _login_admin(client)
+    _login_lecturer(client, lecturer)
 
     event = client.get(
-        "/admin/supervision/events"
+        "/lecturer/supervision/events"
     ).get_json()["events"][0]
 
     assert stored.exists() is False

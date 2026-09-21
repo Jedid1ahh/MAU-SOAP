@@ -2,7 +2,10 @@
 
 from .account_verification_token import AccountVerificationToken
 from .answer_grade import AnswerGrade
+from .course import Course
+from .course_enrollment import CourseEnrollment
 from .enums import (
+    EnrollmentStatus,
     GradedBy,
     MonitorType,
     QuestionType,
@@ -22,6 +25,8 @@ from .warning_log import WarningLog
 
 MODEL_REGISTRY = (
     User,
+    Course,
+    CourseEnrollment,
     AccountVerificationToken,
     Exam,
     Question,
@@ -37,7 +42,10 @@ __all__ = [
     "MODEL_REGISTRY",
     "AccountVerificationToken",
     "AnswerGrade",
+    "Course",
+    "CourseEnrollment",
     "Exam",
+    "EnrollmentStatus",
     "GradedBy",
     "MonitorType",
     "PasswordResetToken",

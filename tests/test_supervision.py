@@ -25,6 +25,7 @@ from app.models import (
     ViolationType,
     WarningLog,
 )
+from tests.helpers import course_for
 
 
 def _exam(
@@ -35,6 +36,7 @@ def _exam(
 ):
     exam = Exam(
         admin_id=admin.id,
+        course=course_for(admin, "CSC 408", "Computer Networks"),
         title="Computer Networks",
         course_code="CSC 408",
         course_title="Computer Networks",

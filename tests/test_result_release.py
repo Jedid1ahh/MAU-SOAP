@@ -23,6 +23,7 @@ from app.result_release import (
     release_result_now,
     synchronize_result_release,
 )
+from tests.helpers import course_for
 
 
 def _exam(
@@ -35,6 +36,7 @@ def _exam(
 ):
     exam = Exam(
         admin_id=admin.id,
+        course=course_for(admin, "CSC 430", "Computer Networks"),
         title="Computer Networks",
         course_code="CSC 430",
         course_title="Computer Networks",
@@ -133,12 +135,12 @@ def _candidate_session(
         ] = raw_token
 
 
-def _login(client):
+def _login(client, lecturer):
     response = client.post(
-        "/admin/login",
+        "/account/login",
         data={
-            "email": "admin@mau.edu.ng",
-            "password": "Phase3TestPassword!",
+            "email": lecturer.email,
+            "password": "LecturerTestPassword!",
         },
     )
 
@@ -361,7 +363,7 @@ def test_candidate_sees_pending_manual_review_without_score(
     assert response.status_code == 200
     assert b"Result pending" in response.data
     assert (
-        b"open-ended responses still require Admin grading"
+        b"open-ended responses still require Lecturer grading"
         in response.data
     )
     assert b"4.00 / 10.00" not in response.data
@@ -476,38 +478,38 @@ def test_submission_receipt_links_to_secure_result(
     )
 
 
-def test_admin_results_routes_require_login(client):
-    overview = client.get("/admin/results")
+def test_lecturer_results_routes_require_login(client):
+    overview = client.get("/lecturer/results")
     release = client.post(
-        "/admin/results/1/release"
+        "/lecturer/results/1/release"
     )
 
     assert overview.status_code == 302
     assert release.status_code == 302
-    assert "/admin/login" in overview.headers["Location"]
+    assert "/account/login" in overview.headers["Location"]
 
 
-def test_admin_results_empty_state_and_dashboard_link(
+def test_lecturer_results_empty_state_and_dashboard_link(
     client,
-    admin,
+    lecturer,
 ):
-    _login(client)
+    _login(client, lecturer)
 
-    dashboard = client.get("/admin/")
-    overview = client.get("/admin/results")
+    dashboard = client.get("/lecturer/")
+    overview = client.get("/lecturer/results")
 
     assert dashboard.status_code == 200
-    assert b"Candidate results" in dashboard.data
+    assert b"Results" in dashboard.data
     assert overview.status_code == 200
     assert b"No finalized submissions yet" in overview.data
 
 
-def test_admin_results_overview_shows_released_pending_and_scheduled(
+def test_lecturer_results_overview_shows_released_pending_and_scheduled(
     client,
-    admin,
+    lecturer,
 ):
     immediate_exam = _exam(
-        admin,
+        lecturer,
         token="immediate-result",
     )
     immediate = _submission(
@@ -517,7 +519,7 @@ def test_admin_results_overview_shows_released_pending_and_scheduled(
     )
 
     pending_exam = _exam(
-        admin,
+        lecturer,
         token="pending-result",
         include_open=True,
     )
@@ -528,7 +530,7 @@ def test_admin_results_overview_shows_released_pending_and_scheduled(
     )
 
     scheduled_exam = _exam(
-        admin,
+        lecturer,
         token="scheduled-result",
         release_option=ReleaseOption.SCHEDULED,
         scheduled_release_at=(
@@ -541,9 +543,9 @@ def test_admin_results_overview_shows_released_pending_and_scheduled(
         email="scheduled@gmail.com",
     )
 
-    _login(client)
+    _login(client, lecturer)
 
-    response = client.get("/admin/results")
+    response = client.get("/lecturer/results")
 
     assert response.status_code == 200
     assert b"released@gmail.com" in response.data
@@ -558,12 +560,12 @@ def test_admin_results_overview_shows_released_pending_and_scheduled(
     assert scheduled.result.released_at is None
 
 
-def test_admin_can_release_completed_scheduled_result(
+def test_lecturer_can_release_completed_scheduled_result(
     client,
-    admin,
+    lecturer,
 ):
     exam = _exam(
-        admin,
+        lecturer,
         release_option=ReleaseOption.SCHEDULED,
         scheduled_release_at=(
             datetime.now(UTC) + timedelta(days=1)
@@ -571,40 +573,40 @@ def test_admin_can_release_completed_scheduled_result(
     )
     submission = _submission(exam)
 
-    _login(client)
+    _login(client, lecturer)
 
     response = client.post(
-        f"/admin/results/{submission.id}/release"
+        f"/lecturer/results/{submission.id}/release"
     )
 
     assert response.status_code == 302
     assert response.headers["Location"].endswith(
-        "/admin/results"
+        "/lecturer/results"
     )
     assert submission.result.released_at is not None
 
-    overview = client.get("/admin/results")
+    overview = client.get("/lecturer/results")
 
     assert b"Candidate result released." in overview.data
 
 
-def test_admin_cannot_release_pending_or_unknown_result(
+def test_lecturer_cannot_release_pending_or_unknown_result(
     client,
-    admin,
+    lecturer,
 ):
     pending_exam = _exam(
-        admin,
+        lecturer,
         include_open=True,
     )
     pending = _submission(pending_exam)
 
-    _login(client)
+    _login(client, lecturer)
 
     pending_response = client.post(
-        f"/admin/results/{pending.id}/release"
+        f"/lecturer/results/{pending.id}/release"
     )
     unknown = client.post(
-        "/admin/results/999999/release"
+        "/lecturer/results/999999/release"
     )
 
     assert pending_response.status_code == 302
@@ -623,12 +625,13 @@ def test_admin_cannot_release_pending_or_unknown_result(
 
 def test_exam_form_configures_immediate_release(
     client,
-    admin,
+    lecturer,
 ):
-    _login(client)
+    course = course_for(lecturer, "CSC 440", "Distributed Applications")
+    _login(client, lecturer)
 
     response = client.post(
-        "/admin/exams/new",
+        f"/lecturer/courses/{course.id}/exams/new",
         data=_exam_form_data(
             scheduled_release_at="2099-01-01T12:00",
         ),
@@ -664,14 +667,15 @@ def test_exam_form_configures_immediate_release(
 )
 def test_exam_form_rejects_invalid_scheduled_release(
     client,
-    admin,
+    lecturer,
     scheduled_release_at,
     expected_message,
 ):
-    _login(client)
+    course = course_for(lecturer, "CSC 440", "Distributed Applications")
+    _login(client, lecturer)
 
     response = client.post(
-        "/admin/exams/new",
+        f"/lecturer/courses/{course.id}/exams/new",
         data=_exam_form_data(
             release_option=ReleaseOption.SCHEDULED.value,
             scheduled_release_at=scheduled_release_at,
@@ -684,14 +688,15 @@ def test_exam_form_rejects_invalid_scheduled_release(
 
 def test_exam_form_saves_and_prefills_scheduled_release(
     client,
-    admin,
+    lecturer,
 ):
     release_value = "2099-01-01T12:30"
 
-    _login(client)
+    course = course_for(lecturer, "CSC 440", "Distributed Applications")
+    _login(client, lecturer)
 
     created = client.post(
-        "/admin/exams/new",
+        f"/lecturer/courses/{course.id}/exams/new",
         data=_exam_form_data(
             release_option=ReleaseOption.SCHEDULED.value,
             scheduled_release_at=release_value,
@@ -705,10 +710,10 @@ def test_exam_form_saves_and_prefills_scheduled_release(
     )
 
     edit_page = client.get(
-        f"/admin/exams/{exam.id}/edit"
+        f"/lecturer/exams/{exam.id}/edit"
     )
     detail = client.get(
-        f"/admin/exams/{exam.id}"
+        f"/lecturer/exams/{exam.id}"
     )
 
     assert created.status_code == 302

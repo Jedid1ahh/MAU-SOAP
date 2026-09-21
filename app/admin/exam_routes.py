@@ -1,4 +1,4 @@
-"""Phase 4 Admin examination and question management routes."""
+"""Lecturer examination and question management routes."""
 
 from __future__ import annotations
 
@@ -10,20 +10,24 @@ from flask_login import current_user
 from sqlalchemy import func, select
 
 from app.extensions import db
-from app.models import Exam, MonitorType, Question, QuestionType, ReleaseOption
+from app.lecturer import lecturer_bp
+from app.lecturer.auth import lecturer_required
+from app.lecturer.routes import owned_course
+from app.models import Course, Exam, MonitorType, Question, QuestionType, ReleaseOption
 
-from . import admin_bp
-from .auth import admin_required
 from .exam_forms import ExamForm, QuestionForm
 
 
 def _owned_exam(exam_id: int) -> Exam:
-    """Load one examination belonging to the logged-in Admin."""
+    """Load one examination in a course assigned to the Lecturer."""
 
     exam = db.session.scalar(
-        select(Exam).where(
+        select(Exam)
+        .join(Course)
+        .where(
             Exam.id == exam_id,
             Exam.admin_id == current_user.id,
+            Course.lecturer_id == current_user.id,
         )
     )
     if exam is None:
@@ -32,7 +36,7 @@ def _owned_exam(exam_id: int) -> Exam:
 
 
 def _owned_question(exam: Exam, question_id: int) -> Question:
-    """Load one question belonging to the selected Admin-owned examination."""
+    """Load one question belonging to the selected Lecturer examination."""
 
     question = db.session.scalar(
         select(Question).where(
@@ -54,15 +58,13 @@ def _locked_redirect(exam: Exam):
         "This examination is locked because a Candidate has already started it.",
         "error",
     )
-    return redirect(url_for("admin.exam_detail", exam_id=exam.id))
+    return redirect(url_for("lecturer.exam_detail", exam_id=exam.id))
 
 
 def _apply_exam_form(exam: Exam, form: ExamForm) -> None:
     """Copy validated examination form values onto a model instance."""
 
     exam.title = form.title.data.strip()
-    exam.course_code = form.course_code.data.strip().upper()
-    exam.course_title = form.course_title.data.strip()
     exam.instructions = (form.instructions.data or "").strip() or None
     exam.time_limit_minutes = form.time_limit_minutes.data
     exam.monitor_type = MonitorType(form.monitor_type.data)
@@ -121,8 +123,6 @@ def _exam_form_for_edit(exam: Exam) -> ExamForm:
     return ExamForm(
         data={
             "title": exam.title,
-            "course_code": exam.course_code,
-            "course_title": exam.course_title,
             "instructions": exam.instructions,
             "time_limit_minutes": exam.time_limit_minutes,
             "monitor_type": exam.monitor_type.value,
@@ -166,18 +166,23 @@ def _question_form_for_edit(question: Question) -> QuestionForm:
     return QuestionForm(data=data)
 
 
-@admin_bp.route("/exams/new", methods=["GET", "POST"])
-@admin_required
-def create_exam():
-    """Create an Admin-owned examination and its random share token."""
+@lecturer_bp.route(
+    "/courses/<int:course_id>/exams/new",
+    methods=["GET", "POST"],
+)
+@lecturer_required
+def create_exam(course_id: int):
+    """Create an examination within one assigned course."""
 
+    course = owned_course(course_id)
     form = ExamForm()
     if form.validate_on_submit():
         exam = Exam(
             admin_id=current_user.id,
+            course=course,
             title="",
-            course_code="",
-            course_title="",
+            course_code=course.code,
+            course_title=course.title,
             time_limit_minutes=1,
             monitor_type=MonitorType.FACE,
             release_option=ReleaseOption.IMMEDIATE,
@@ -187,26 +192,27 @@ def create_exam():
         db.session.add(exam)
         db.session.commit()
         flash("Examination created. You can now add questions.", "success")
-        return redirect(url_for("admin.exam_detail", exam_id=exam.id))
+        return redirect(url_for("lecturer.exam_detail", exam_id=exam.id))
 
     return render_template(
         "admin/exam_form.html",
         form=form,
+        course=course,
         form_title="Create examination",
         submit_label="Create examination",
     )
 
 
-@admin_bp.get("/exams/<int:exam_id>")
-@admin_required
+@lecturer_bp.get("/exams/<int:exam_id>")
+@lecturer_required
 def exam_detail(exam_id: int):
     """Show one examination, its questions, and its shareable link."""
 
     return render_template("admin/exam_detail.html", exam=_owned_exam(exam_id))
 
 
-@admin_bp.route("/exams/<int:exam_id>/edit", methods=["GET", "POST"])
-@admin_required
+@lecturer_bp.route("/exams/<int:exam_id>/edit", methods=["GET", "POST"])
+@lecturer_required
 def edit_exam(exam_id: int):
     """Update examination metadata before any Candidate starts."""
 
@@ -219,7 +225,7 @@ def edit_exam(exam_id: int):
         _apply_exam_form(exam, form)
         db.session.commit()
         flash("Examination updated.", "success")
-        return redirect(url_for("admin.exam_detail", exam_id=exam.id))
+        return redirect(url_for("lecturer.exam_detail", exam_id=exam.id))
 
     return render_template(
         "admin/exam_form.html",
@@ -230,8 +236,8 @@ def edit_exam(exam_id: int):
     )
 
 
-@admin_bp.post("/exams/<int:exam_id>/delete")
-@admin_required
+@lecturer_bp.post("/exams/<int:exam_id>/delete")
+@lecturer_required
 def delete_exam(exam_id: int):
     """Delete an examination only before a Candidate starts it."""
 
@@ -244,14 +250,14 @@ def delete_exam(exam_id: int):
     db.session.delete(exam)
     db.session.commit()
     flash("Examination deleted.", "success")
-    return redirect(url_for("admin.index"))
+    return redirect(url_for("lecturer.course_detail", course_id=exam.course_id))
 
 
-@admin_bp.route(
+@lecturer_bp.route(
     "/exams/<int:exam_id>/questions/new",
     methods=["GET", "POST"],
 )
-@admin_required
+@lecturer_required
 def create_question(exam_id: int):
     """Append one question to an unlocked examination."""
 
@@ -274,7 +280,7 @@ def create_question(exam_id: int):
         db.session.add(question)
         db.session.commit()
         flash("Question added.", "success")
-        return redirect(url_for("admin.exam_detail", exam_id=exam.id))
+        return redirect(url_for("lecturer.exam_detail", exam_id=exam.id))
 
     return render_template(
         "admin/question_form.html",
@@ -285,11 +291,11 @@ def create_question(exam_id: int):
     )
 
 
-@admin_bp.route(
+@lecturer_bp.route(
     "/exams/<int:exam_id>/questions/<int:question_id>/edit",
     methods=["GET", "POST"],
 )
-@admin_required
+@lecturer_required
 def edit_question(exam_id: int, question_id: int):
     """Update a question before the examination becomes locked."""
 
@@ -304,7 +310,7 @@ def edit_question(exam_id: int, question_id: int):
             setattr(question, field_name, value)
         db.session.commit()
         flash("Question updated.", "success")
-        return redirect(url_for("admin.exam_detail", exam_id=exam.id))
+        return redirect(url_for("lecturer.exam_detail", exam_id=exam.id))
 
     return render_template(
         "admin/question_form.html",
@@ -316,10 +322,10 @@ def edit_question(exam_id: int, question_id: int):
     )
 
 
-@admin_bp.post(
+@lecturer_bp.post(
     "/exams/<int:exam_id>/questions/<int:question_id>/delete"
 )
-@admin_required
+@lecturer_required
 def delete_question(exam_id: int, question_id: int):
     """Delete a question before the examination becomes locked."""
 
@@ -331,4 +337,4 @@ def delete_question(exam_id: int, question_id: int):
     db.session.delete(question)
     db.session.commit()
     flash("Question deleted.", "success")
-    return redirect(url_for("admin.exam_detail", exam_id=exam.id))
+    return redirect(url_for("lecturer.exam_detail", exam_id=exam.id))

@@ -2,27 +2,35 @@
 
 MAU-SOAP is the Modibbo Adama University browser-based secure online
 assessment and supervision platform. The application currently includes the
-verified functionality from Phases 1–10 plus the Phase 11 multi-role account
-foundation.
+verified functionality from Phases 1–13, including course-centered Admin,
+Lecturer, and Student portals.
 
 ## Current capabilities
 
-- One pre-provisioned Admin account; no Admin registration
+- One pre-provisioned Admin account for accounts, course creation, and
+  Lecturer assignment; no Admin registration
 - Lecturer registration with exact `@mau.edu.ng` validation, email
   verification, and Admin approval
 - Student registration with exact `@student.mau.edu.ng` validation
 - Role-isolated Admin, Lecturer, and Student dashboards
-- Examination and question management
+- Admin-created courses assigned to exactly one Lecturer at a time, with full
+  workspace transfer on reassignment
+- Lecturer-owned examination/question management, live supervision, grading,
+  and result release, isolated by assigned course
+- Registered-Student invitations, acceptance, enrollment, and course rosters
 - Secure examination links with OTP and magic-link verification
 - Server-authoritative timing, autosave/resume, supervision warnings, and
   third-warning auto-submission
 - Automatic and manual grading
 - Immediate and scheduled result release, with ungraded open-ended results
   withheld
-- Student examination history and protected result access
+- Student examinations, attempts, and results grouped by enrolled course
+- Exam-link verification restricted to registered Students who accepted that
+  course's invitation
 
-The existing examination-link flow remains operational while the Lecturer and
-Student dashboards are expanded in Phases 12 and 13.
+A full assignment-resource workflow is not yet implemented; the current
+course workspace covers invitations, enrollments, examinations, grading, and
+results.
 
 ## Project structure
 
@@ -63,6 +71,11 @@ On Git Bash for Windows, activate with `source .venv/Scripts/activate`.
 
 The default `.env.example` database URL targets local XAMPP/MariaDB. Replace
 all placeholder secrets in the private `.env` before running the system.
+
+When upgrading from Phase 11, the migration preserves every existing exam by
+creating an unassigned legacy course for each existing course code. After the
+upgrade, log in as Admin and assign those courses to approved Lecturers; the
+complete exam workspace transfers with the assignment.
 
 ## Verification
 

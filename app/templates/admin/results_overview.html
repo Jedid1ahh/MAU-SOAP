@@ -10,7 +10,7 @@
         <h1>Candidate results</h1>
         <p>Monitor grading completion and Candidate result availability.</p>
       </div>
-      <a class="secondary-button" href="{{ url_for('admin.index') }}">
+      <a class="secondary-button" href="{{ url_for('lecturer.index') }}">
         Back to dashboard
       </a>
     </div>
@@ -74,7 +74,7 @@
               <a
                 class="secondary-button"
                 href="{{ url_for(
-                  'admin.grade_submission_view',
+                  'lecturer.grade_submission_view',
                   submission_id=submission.id
                 ) }}"
               >
@@ -84,7 +84,7 @@
               {% if not result.is_released and result.status.value == "complete" %}
                 <form
                   action="{{ url_for(
-                    'admin.release_result',
+                    'lecturer.release_result',
                     submission_id=submission.id
                   ) }}"
                   method="post"

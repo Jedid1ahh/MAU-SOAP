@@ -13,6 +13,11 @@ class Role(StringEnum):
     STUDENT = "student"
 
 
+class EnrollmentStatus(StringEnum):
+    PENDING = "pending"
+    ACCEPTED = "accepted"
+
+
 class MonitorType(StringEnum):
     FACE = "face"
     EYE_GAZE = "eye_gaze"
@@ -40,6 +45,7 @@ class ViolationType(StringEnum):
 class GradedBy(StringEnum):
     AUTOMATIC = "automatic"
     ADMIN = "admin"
+    LECTURER = "lecturer"
 
 
 class ResultStatus(StringEnum):

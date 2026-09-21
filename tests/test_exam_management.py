@@ -1,4 +1,4 @@
-"""Tests for Phase 4 Admin examination and question management."""
+"""Tests for Lecturer examination and question management."""
 
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -14,14 +14,15 @@ from app.models import (
     ReleaseOption,
     Submission,
 )
+from tests.helpers import course_for
 
 
-def _login(client):
+def _login(client, lecturer):
     return client.post(
-        "/admin/login",
+        "/account/login",
         data={
-            "email": "admin@mau.edu.ng",
-            "password": "Phase3TestPassword!",
+            "email": lecturer.email,
+            "password": "LecturerTestPassword!",
         },
     )
 
@@ -34,6 +35,7 @@ def _exam(
 ):
     exam = Exam(
         admin_id=admin.id,
+        course=course_for(admin, "CSC 401", "Software Quality Assurance"),
         title=title,
         course_code="CSC 401",
         course_title="Software Quality Assurance",
@@ -87,11 +89,11 @@ def _question(
 def _exam_data(**overrides):
     data = {
         "title": "Introduction to Programming",
-        "course_code": " csc 101 ",
-        "course_title": "Computer Programming I",
         "instructions": " Read carefully. ",
         "time_limit_minutes": "60",
         "monitor_type": MonitorType.EYE_GAZE.value,
+        "release_option": ReleaseOption.IMMEDIATE.value,
+        "scheduled_release_at": "",
     }
     data.update(overrides)
     return data
@@ -118,23 +120,23 @@ def _question_data(
     return data
 
 
-def test_exam_management_requires_admin_login(client, admin):
-    exam = _exam(admin)
+def test_exam_management_requires_lecturer_login(client, lecturer):
+    exam = _exam(lecturer)
     question = _question(exam)
 
     paths = [
-        ("get", "/admin/exams/new"),
-        ("get", f"/admin/exams/{exam.id}"),
-        ("get", f"/admin/exams/{exam.id}/edit"),
-        ("post", f"/admin/exams/{exam.id}/delete"),
-        ("get", f"/admin/exams/{exam.id}/questions/new"),
+        ("get", f"/lecturer/courses/{exam.course_id}/exams/new"),
+        ("get", f"/lecturer/exams/{exam.id}"),
+        ("get", f"/lecturer/exams/{exam.id}/edit"),
+        ("post", f"/lecturer/exams/{exam.id}/delete"),
+        ("get", f"/lecturer/exams/{exam.id}/questions/new"),
         (
             "get",
-            f"/admin/exams/{exam.id}/questions/{question.id}/edit",
+            f"/lecturer/exams/{exam.id}/questions/{question.id}/edit",
         ),
         (
             "post",
-            f"/admin/exams/{exam.id}/questions/{question.id}/delete",
+            f"/lecturer/exams/{exam.id}/questions/{question.id}/delete",
         ),
     ]
 
@@ -142,34 +144,37 @@ def test_exam_management_requires_admin_login(client, admin):
         response = getattr(client, method)(path)
 
         assert response.status_code == 302
-        assert "/admin/login" in response.headers["Location"]
+        assert "/account/login" in response.headers["Location"]
+
+    assert client.get(f"/admin/exams/{exam.id}").status_code == 404
 
 
-def test_dashboard_lists_examinations(client, admin):
-    exam = _exam(admin)
+def test_dashboard_lists_courses(client, lecturer):
+    exam = _exam(lecturer)
     _question(exam)
-    _login(client)
+    _login(client, lecturer)
 
-    response = client.get("/admin/")
+    response = client.get("/lecturer/")
 
     assert response.status_code == 200
-    assert b"Software Testing" in response.data
     assert b"CSC 401" in response.data
-    assert b"1 question(s)" in response.data
-    assert b"Editable" in response.data
+    assert b"Software Quality Assurance" in response.data
+    assert b"1 examination(s)" in response.data
 
 
 def test_create_exam_validates_and_generates_secure_token(
     client,
-    admin,
+    lecturer,
     monkeypatch,
 ):
-    _login(client)
+    course = course_for(lecturer, "CSC 101", "Computer Programming I")
+    _login(client, lecturer)
 
-    assert client.get("/admin/exams/new").status_code == 200
+    create_url = f"/lecturer/courses/{course.id}/exams/new"
+    assert client.get(create_url).status_code == 200
 
     invalid = client.post(
-        "/admin/exams/new",
+        create_url,
         data=_exam_data(
             title="",
             time_limit_minutes="0",
@@ -188,7 +193,7 @@ def test_create_exam_validates_and_generates_secure_token(
     )
 
     response = client.post(
-        "/admin/exams/new",
+        create_url,
         data=_exam_data(),
     )
 
@@ -196,9 +201,9 @@ def test_create_exam_validates_and_generates_secure_token(
 
     assert response.status_code == 302
     assert response.headers["Location"].endswith(
-        f"/admin/exams/{exam.id}"
+        f"/lecturer/exams/{exam.id}"
     )
-    assert exam.admin_id == admin.id
+    assert exam.admin_id == lecturer.id
     assert exam.course_code == "CSC 101"
     assert exam.instructions == "Read carefully."
     assert exam.time_limit_minutes == 60
@@ -210,12 +215,12 @@ def test_create_exam_validates_and_generates_secure_token(
 
 def test_exam_detail_and_candidate_share_link_use_token(
     client,
-    admin,
+    lecturer,
 ):
-    exam = _exam(admin)
-    _login(client)
+    exam = _exam(lecturer)
+    _login(client, lecturer)
 
-    detail = client.get(f"/admin/exams/{exam.id}")
+    detail = client.get(f"/lecturer/exams/{exam.id}")
     landing = client.get(f"/exam/{exam.exam_link_token}")
 
     assert detail.status_code == 200
@@ -230,18 +235,18 @@ def test_exam_detail_and_candidate_share_link_use_token(
 
 def test_edit_exam_loads_values_and_updates_settings(
     client,
-    admin,
+    lecturer,
 ):
-    exam = _exam(admin)
-    _login(client)
+    exam = _exam(lecturer)
+    _login(client, lecturer)
 
-    page = client.get(f"/admin/exams/{exam.id}/edit")
+    page = client.get(f"/lecturer/exams/{exam.id}/edit")
 
     assert page.status_code == 200
     assert b"Software Testing" in page.data
 
     response = client.post(
-        f"/admin/exams/{exam.id}/edit",
+        f"/lecturer/exams/{exam.id}/edit",
         data=_exam_data(
             title="Advanced Testing",
             instructions="   ",
@@ -257,30 +262,32 @@ def test_edit_exam_loads_values_and_updates_settings(
     assert exam.monitor_type is MonitorType.FACE
 
 
-def test_delete_exam_removes_its_questions(client, admin):
-    exam = _exam(admin)
+def test_delete_exam_removes_its_questions(client, lecturer):
+    exam = _exam(lecturer)
     _question(exam)
     exam_id = exam.id
-    _login(client)
+    _login(client, lecturer)
 
     response = client.post(
-        f"/admin/exams/{exam_id}/delete"
+        f"/lecturer/exams/{exam_id}/delete"
     )
 
     assert response.status_code == 302
-    assert response.headers["Location"].endswith("/admin/")
+    assert response.headers["Location"].endswith(
+        f"/lecturer/courses/{exam.course_id}"
+    )
     assert db.session.get(Exam, exam_id) is None
     assert db.session.scalar(select(Question)) is None
 
 
 def test_question_form_reports_conditional_validation_errors(
     client,
-    admin,
+    lecturer,
 ):
-    exam = _exam(admin)
-    _login(client)
+    exam = _exam(lecturer)
+    _login(client, lecturer)
 
-    url = f"/admin/exams/{exam.id}/questions/new"
+    url = f"/lecturer/exams/{exam.id}/questions/new"
 
     assert client.get(url).status_code == 200
 
@@ -328,12 +335,12 @@ def test_question_form_reports_conditional_validation_errors(
 
 def test_create_all_supported_question_types_and_positions(
     client,
-    admin,
+    lecturer,
 ):
-    exam = _exam(admin)
-    _login(client)
+    exam = _exam(lecturer)
+    _login(client, lecturer)
 
-    url = f"/admin/exams/{exam.id}/questions/new"
+    url = f"/lecturer/exams/{exam.id}/questions/new"
 
     mcq = client.post(
         url,
@@ -384,9 +391,9 @@ def test_create_all_supported_question_types_and_positions(
 
 def test_edit_forms_support_every_question_type(
     client,
-    admin,
+    lecturer,
 ):
-    exam = _exam(admin)
+    exam = _exam(lecturer)
 
     mcq = _question(exam)
 
@@ -404,18 +411,18 @@ def test_edit_forms_support_every_question_type(
         text="Explain software quality.",
     )
 
-    _login(client)
+    _login(client, lecturer)
 
     for question in (mcq, short_answer, open_ended):
         page = client.get(
-            f"/admin/exams/{exam.id}/questions/{question.id}/edit"
+            f"/lecturer/exams/{exam.id}/questions/{question.id}/edit"
         )
 
         assert page.status_code == 200
         assert question.question_text.encode() in page.data
 
     response = client.post(
-        f"/admin/exams/{exam.id}/questions/{open_ended.id}/edit",
+        f"/lecturer/exams/{exam.id}/questions/{open_ended.id}/edit",
         data=_question_data(
             QuestionType.SHORT_ANSWER,
             short_answer=" Iteration ",
@@ -433,9 +440,9 @@ def test_edit_forms_support_every_question_type(
 
 def test_delete_question_removes_only_selected_question(
     client,
-    admin,
+    lecturer,
 ):
-    exam = _exam(admin)
+    exam = _exam(lecturer)
 
     first = _question(exam)
 
@@ -445,10 +452,10 @@ def test_delete_question_removes_only_selected_question(
         text="Define verification.",
     )
 
-    _login(client)
+    _login(client, lecturer)
 
     response = client.post(
-        f"/admin/exams/{exam.id}/questions/{first.id}/delete"
+        f"/lecturer/exams/{exam.id}/questions/{first.id}/delete"
     )
 
     assert response.status_code == 302
@@ -458,23 +465,23 @@ def test_delete_question_removes_only_selected_question(
 
 def test_missing_or_mismatched_resources_return_not_found(
     client,
-    admin,
+    lecturer,
 ):
-    first_exam = _exam(admin)
+    first_exam = _exam(lecturer)
 
     second_exam = _exam(
-        admin,
+        lecturer,
         token="second-token",
         title="Second exam",
     )
 
     question = _question(second_exam)
-    _login(client)
+    _login(client, lecturer)
 
-    assert client.get("/admin/exams/99999").status_code == 404
+    assert client.get("/lecturer/exams/99999").status_code == 404
 
     response = client.get(
-        f"/admin/exams/{first_exam.id}/questions/{question.id}/edit"
+        f"/lecturer/exams/{first_exam.id}/questions/{question.id}/edit"
     )
 
     assert response.status_code == 404
@@ -482,9 +489,9 @@ def test_missing_or_mismatched_resources_return_not_found(
 
 def test_started_submission_locks_every_structural_write(
     client,
-    admin,
+    lecturer,
 ):
-    exam = _exam(admin)
+    exam = _exam(lecturer)
     question = _question(exam)
 
     submission = Submission(
@@ -499,9 +506,9 @@ def test_started_submission_locks_every_structural_write(
 
     db.session.add(submission)
     db.session.commit()
-    _login(client)
+    _login(client, lecturer)
 
-    detail = client.get(f"/admin/exams/{exam.id}")
+    detail = client.get(f"/lecturer/exams/{exam.id}")
 
     assert detail.status_code == 200
     assert b"Locked" in detail.data
@@ -510,33 +517,33 @@ def test_started_submission_locks_every_structural_write(
     locked_requests = [
         (
             "get",
-            f"/admin/exams/{exam.id}/edit",
+            f"/lecturer/exams/{exam.id}/edit",
             None,
         ),
         (
             "post",
-            f"/admin/exams/{exam.id}/edit",
+            f"/lecturer/exams/{exam.id}/edit",
             _exam_data(),
         ),
         (
             "post",
-            f"/admin/exams/{exam.id}/delete",
+            f"/lecturer/exams/{exam.id}/delete",
             None,
         ),
         (
             "get",
-            f"/admin/exams/{exam.id}/questions/new",
+            f"/lecturer/exams/{exam.id}/questions/new",
             None,
         ),
         (
             "post",
-            f"/admin/exams/{exam.id}/questions/new",
+            f"/lecturer/exams/{exam.id}/questions/new",
             _question_data(),
         ),
         (
             "get",
             (
-                f"/admin/exams/{exam.id}/questions/"
+                f"/lecturer/exams/{exam.id}/questions/"
                 f"{question.id}/edit"
             ),
             None,
@@ -544,7 +551,7 @@ def test_started_submission_locks_every_structural_write(
         (
             "post",
             (
-                f"/admin/exams/{exam.id}/questions/"
+                f"/lecturer/exams/{exam.id}/questions/"
                 f"{question.id}/edit"
             ),
             _question_data(),
@@ -552,7 +559,7 @@ def test_started_submission_locks_every_structural_write(
         (
             "post",
             (
-                f"/admin/exams/{exam.id}/questions/"
+                f"/lecturer/exams/{exam.id}/questions/"
                 f"{question.id}/delete"
             ),
             None,
@@ -567,7 +574,7 @@ def test_started_submission_locks_every_structural_write(
 
         assert response.status_code == 302
         assert response.headers["Location"].endswith(
-            f"/admin/exams/{exam.id}"
+            f"/lecturer/exams/{exam.id}"
         )
 
     assert db.session.get(Exam, exam.id) is not None

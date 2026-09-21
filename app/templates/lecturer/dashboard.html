@@ -6,35 +6,82 @@
   <section class="dashboard-shell">
     <div class="page-heading">
       <div>
-        <span class="eyebrow">Approved Lecturer account</span>
-        <h1>Lecturer dashboard</h1>
+        <span class="eyebrow">Lecturer workspace</span>
+        <h1>Your courses</h1>
         <p>Welcome, <strong>{{ current_user.full_name }}</strong>.</p>
+      </div>
+      <div class="item-actions">
+        <a class="secondary-button" href="{{ url_for('lecturer.grading_queue') }}">
+          Pending grading
+        </a>
+        <a class="secondary-button" href="{{ url_for('lecturer.results_overview') }}">
+          Results
+        </a>
       </div>
     </div>
 
-    {% if exams %}
+    {% if courses %}
       <div class="exam-grid">
-        {% for exam in exams %}
+        {% for course in courses %}
+          {% set accepted_count = course.enrollments|selectattr('is_accepted')|list|length %}
+          {% set pending_count = course.enrollments|rejectattr('is_accepted')|list|length %}
           <article class="card exam-card">
             <div class="card-heading">
-              <span class="status-badge">
-                {{ "Locked" if exam.is_locked else "Editable" }}
-              </span>
-              <span class="muted-text">{{ exam.questions|length }} question(s)</span>
+              <span class="status-badge">{{ course.code }}</span>
+              <span class="muted-text">{{ course.exams|length }} examination(s)</span>
             </div>
-            <h2>{{ exam.title }}</h2>
-            <p><strong>{{ exam.course_code }}</strong> — {{ exam.course_title }}</p>
+            <h2>{{ course.title }}</h2>
+            {% if course.description %}<p>{{ course.description }}</p>{% endif %}
+            <dl class="metadata-list metadata-list-stacked">
+              <div><dt>Enrolled Students</dt><dd>{{ accepted_count }}</dd></div>
+              <div><dt>Pending invitations</dt><dd>{{ pending_count }}</dd></div>
+            </dl>
+            <a
+              class="primary-button button-auto"
+              href="{{ url_for('lecturer.course_detail', course_id=course.id) }}"
+            >
+              Open course
+            </a>
           </article>
         {% endfor %}
       </div>
     {% else %}
       <section class="card empty-state">
-        <h2>No examinations yet</h2>
+        <h2>No courses assigned</h2>
         <p>
-          Your account is ready. Lecturer examination-management tools are the
-          next implementation step.
+          An Administrator must create a course and assign it to you before
+          you can invite Students or create examinations.
         </p>
       </section>
     {% endif %}
+
+    <section
+      id="supervision-feed"
+      class="card supervision-feed"
+      data-events-url="{{ url_for('lecturer.supervision_events') }}"
+      aria-live="polite"
+    >
+      <div class="card-heading">
+        <div>
+          <span class="eyebrow">Live integrity feed</span>
+          <h2>Candidate supervision warnings</h2>
+        </div>
+        <span id="supervision-feed-status" class="status-badge">
+          Connecting…
+        </span>
+      </div>
+      <p class="muted-text">
+        Alerts from examinations in your assigned courses appear here. Protected
+        face-absence evidence becomes available when its upload completes.
+      </p>
+      <div id="supervision-event-list" class="supervision-event-list">
+        <p id="supervision-empty" class="muted-text">No warnings recorded yet.</p>
+      </div>
+    </section>
+
+    <script
+      src="{{ url_for('static', filename='js/admin_supervision.js') }}"
+      defer
+    ></script>
   </section>
 {% endblock %}

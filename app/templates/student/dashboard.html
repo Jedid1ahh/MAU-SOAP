@@ -12,47 +12,99 @@
       </div>
     </div>
 
-    {% if submissions %}
-      <div class="exam-grid">
-        {% for submission in submissions %}
-          <article class="card exam-card">
-            <div class="card-heading">
-              {% if not submission.is_finalized %}
-                <span class="status-badge status-pending">In progress</span>
-              {% elif submission.result and submission.result.is_released %}
-                <span class="status-badge">Result released</span>
-              {% else %}
-                <span class="status-badge status-pending">Result pending</span>
+    {% if pending_enrollments %}
+      <section class="card questions-card">
+        <div class="card-heading">
+          <div>
+            <span class="eyebrow">New invitations</span>
+            <h2>Courses waiting for you</h2>
+          </div>
+          <span class="status-badge status-pending">
+            {{ pending_enrollments|length }} pending
+          </span>
+        </div>
+        <div class="exam-grid">
+          {% for enrollment in pending_enrollments %}
+            <article class="card exam-card">
+              <span class="status-badge">{{ enrollment.course.code }}</span>
+              <h3>{{ enrollment.course.title }}</h3>
+              {% if enrollment.invited_by %}
+                <p>Invited by {{ enrollment.invited_by.full_name }}</p>
               {% endif %}
-            </div>
-            <h2>{{ submission.exam.title }}</h2>
-            <p>
-              <strong>{{ submission.exam.course_code }}</strong>
-              — {{ submission.exam.course_title }}
-            </p>
-            <dl class="metadata-list metadata-list-stacked">
-              <div><dt>Started</dt><dd>{{ submission.started_at }}</dd></div>
-              {% if submission.submitted_at %}
-                <div><dt>Submitted</dt><dd>{{ submission.submitted_at }}</dd></div>
-              {% endif %}
-            </dl>
-            {% if submission.is_finalized %}
-              <a
-                class="secondary-button"
-                href="{{ url_for('student.result', submission_id=submission.id) }}"
+              <form
+                method="post"
+                action="{{ url_for('student.accept_invitation', enrollment_id=enrollment.id) }}"
               >
-                Check result
-              </a>
-            {% endif %}
-          </article>
-        {% endfor %}
-      </div>
-    {% else %}
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="primary-button button-auto" type="submit">
+                  Accept invitation
+                </button>
+              </form>
+            </article>
+          {% endfor %}
+        </div>
+      </section>
+    {% endif %}
+
+    {% if accepted_enrollments %}
+      {% for enrollment in accepted_enrollments %}
+        <section class="card questions-card">
+          <div class="card-heading">
+            <div>
+              <span class="status-badge">{{ enrollment.course.code }}</span>
+              <h2>{{ enrollment.course.title }}</h2>
+            </div>
+            <span class="muted-text">
+              {{ enrollment.course.exams|length }} examination(s)
+            </span>
+          </div>
+          {% if enrollment.course.exams %}
+            <div class="exam-grid">
+              {% for exam in enrollment.course.exams %}
+                {% set submission = submissions_by_exam.get(exam.id) %}
+                <article class="card exam-card">
+                  <div class="card-heading">
+                    {% if submission and not submission.is_finalized %}
+                      <span class="status-badge status-pending">In progress</span>
+                    {% elif submission and submission.result and submission.result.is_released %}
+                      <span class="status-badge">Result released</span>
+                    {% elif submission %}
+                      <span class="status-badge status-pending">Result pending</span>
+                    {% else %}
+                      <span class="status-badge">Available</span>
+                    {% endif %}
+                  </div>
+                  <h3>{{ exam.title }}</h3>
+                  <p>{{ exam.time_limit_minutes }} minutes</p>
+                  {% if submission and submission.is_finalized %}
+                    <a
+                      class="secondary-button"
+                      href="{{ url_for('student.result', submission_id=submission.id) }}"
+                    >
+                      Check result
+                    </a>
+                  {% else %}
+                    <a
+                      class="primary-button button-auto"
+                      href="{{ url_for('candidate.exam_landing', token=exam.exam_link_token) }}"
+                    >
+                      {{ "Resume examination" if submission else "Open examination" }}
+                    </a>
+                  {% endif %}
+                </article>
+              {% endfor %}
+            </div>
+          {% else %}
+            <p class="muted-text">No examinations are available for this course yet.</p>
+          {% endif %}
+        </section>
+      {% endfor %}
+    {% elif not pending_enrollments %}
       <section class="card empty-state">
-        <h2>No examination attempts yet</h2>
+        <h2>No courses yet</h2>
         <p>
-          Open the secure examination link supplied by your Lecturer to begin.
-          Your attempt and released result will appear here.
+          Course invitations from your Lecturers will appear here. Accept an
+          invitation to access that course's examinations and results.
         </p>
       </section>
     {% endif %}

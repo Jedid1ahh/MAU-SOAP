@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block title %}{{ course.code }} | MAU-SOAP{% endblock %}
+
+{% block content %}
+  <section class="dashboard-shell">
+    <div class="page-heading">
+      <div>
+        <span class="status-badge">{{ course.code }}</span>
+        <h1>{{ course.title }}</h1>
+        {% if course.description %}<p>{{ course.description }}</p>{% endif %}
+      </div>
+      <a class="secondary-button" href="{{ url_for('lecturer.index') }}">
+        Back to courses
+      </a>
+    </div>
+
+    <div class="detail-grid">
+      <section class="card">
+        <div class="card-heading">
+          <div>
+            <span class="eyebrow">Course roster</span>
+            <h2>Invite Students</h2>
+          </div>
+        </div>
+        <p>
+          Enter registered <strong>@student.mau.edu.ng</strong> addresses.
+          Separate multiple addresses with spaces, commas, semicolons, or new lines.
+        </p>
+        <form
+          method="post"
+          action="{{ url_for('lecturer.invite_students', course_id=course.id) }}"
+          novalidate
+        >
+          {{ invitation_form.hidden_tag() }}
+          <div class="form-group">
+            {{ invitation_form.student_emails.label }}
+            {{ invitation_form.student_emails(rows="6", placeholder="student@student.mau.edu.ng") }}
+            {% for error in invitation_form.student_emails.errors %}
+              <span class="field-error">{{ error }}</span>
+            {% endfor %}
+          </div>
+          <button class="primary-button button-auto" type="submit">
+            Send invitations
+          </button>
+        </form>
+      </section>
+
+      <section class="card">
+        <div class="card-heading">
+          <div>
+            <span class="eyebrow">Membership</span>
+            <h2>Students</h2>
+          </div>
+          <span class="muted-text">{{ accepted_enrollments|length }} enrolled</span>
+        </div>
+        {% if accepted_enrollments %}
+          <ul class="question-list">
+            {% for enrollment in accepted_enrollments %}
+              <li>
+                <strong>{{ enrollment.student.full_name }}</strong><br>
+                <span class="muted-text">{{ enrollment.student.email }}</span>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="muted-text">No Students have accepted an invitation yet.</p>
+        {% endif %}
+
+        {% if pending_enrollments %}
+          <h3>Pending invitations</h3>
+          <ul class="question-list">
+            {% for enrollment in pending_enrollments %}
+              <li>
+                {{ enrollment.student.full_name }}
+                <span class="muted-text">· {{ enrollment.student.email }}</span>
+              </li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      </section>
+    </div>
+
+    <section class="card questions-card">
+      <div class="card-heading">
+        <div>
+          <span class="eyebrow">Course resources</span>
+          <h2>Examinations</h2>
+        </div>
+        <a
+          class="primary-button button-auto"
+          href="{{ url_for('lecturer.create_exam', course_id=course.id) }}"
+        >
+          Create examination
+        </a>
+      </div>
+      {% if course.exams %}
+        <div class="exam-grid">
+          {% for exam in course.exams %}
+            <article class="card exam-card">
+              <div class="card-heading">
+                <span class="status-badge {% if exam.is_locked %}status-locked{% endif %}">
+                  {{ "Locked" if exam.is_locked else "Editable" }}
+                </span>
+                <span class="muted-text">{{ exam.questions|length }} question(s)</span>
+              </div>
+              <h3>{{ exam.title }}</h3>
+              <a
+                class="secondary-button"
+                href="{{ url_for('lecturer.exam_detail', exam_id=exam.id) }}"
+              >
+                Manage examination
+              </a>
+            </article>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty-state compact-empty">
+          <p>No examinations have been created for this course.</p>
+        </div>
+      {% endif %}
+    </section>
+  </section>
+{% endblock %}

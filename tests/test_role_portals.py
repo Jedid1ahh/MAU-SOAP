@@ -7,6 +7,8 @@ from decimal import Decimal
 from app.extensions import bcrypt, db
 from app.grading import grade_submission
 from app.models import (
+    CourseEnrollment,
+    EnrollmentStatus,
     Exam,
     MonitorType,
     Question,
@@ -16,6 +18,7 @@ from app.models import (
     Submission,
     User,
 )
+from tests.helpers import course_for
 
 
 def _account(email: str, role: Role) -> User:
@@ -48,6 +51,7 @@ def _login(client, user: User):
 def _exam(owner: User, *, scheduled: bool = False) -> Exam:
     exam = Exam(
         admin=owner,
+        course=course_for(owner, "CSC 401", "Algorithms"),
         title="Algorithms Examination",
         course_code="CSC 401",
         course_title="Algorithms",
@@ -97,6 +101,17 @@ def _submission(
     return submission
 
 
+def _enroll(student: User, exam: Exam) -> None:
+    enrollment = CourseEnrollment(
+        course=exam.course,
+        student=student,
+        status=EnrollmentStatus.ACCEPTED,
+        accepted_at=datetime.now(UTC),
+    )
+    db.session.add(enrollment)
+    db.session.commit()
+
+
 def test_lecturer_dashboard_lists_only_owned_exams(client, admin):
     lecturer = _account("owner@mau.edu.ng", Role.LECTURER)
     owned = _exam(lecturer)
@@ -106,13 +121,14 @@ def test_lecturer_dashboard_lists_only_owned_exams(client, admin):
     response = client.get("/lecturer/")
 
     assert response.status_code == 200
-    assert owned.title.encode() in response.data
-    assert response.data.count(b"Algorithms Examination") == 1
+    assert owned.course.title.encode() in response.data
+    assert response.data.count(b"Algorithms") == 1
 
 
 def test_student_dashboard_shows_attempt_and_released_result(client, admin):
     student = _account("student@student.mau.edu.ng", Role.STUDENT)
     exam = _exam(admin)
+    _enroll(student, exam)
     active = _submission(exam, student.email, finalized=False)
 
     second_exam = _exam(admin)

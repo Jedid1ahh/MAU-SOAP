@@ -13,8 +13,8 @@
         <h1>{{ exam.title }}</h1>
         <p><strong>{{ exam.course_code }}</strong> — {{ exam.course_title }}</p>
       </div>
-      <a class="secondary-button" href="{{ url_for('admin.index') }}">
-        Back to dashboard
+      <a class="secondary-button" href="{{ url_for('lecturer.course_detail', course_id=exam.course_id) }}">
+        Back to course
       </a>
     </div>
 
@@ -30,7 +30,7 @@
         <div class="card-heading">
           <h2>Examination settings</h2>
           {% if not exam.is_locked %}
-            <a href="{{ url_for('admin.edit_exam', exam_id=exam.id) }}">
+            <a href="{{ url_for('lecturer.edit_exam', exam_id=exam.id) }}">
               Edit settings
             </a>
           {% endif %}
@@ -107,7 +107,7 @@
         {% if not exam.is_locked %}
           <a
             class="primary-button button-auto"
-            href="{{ url_for('admin.create_question', exam_id=exam.id) }}"
+            href="{{ url_for('lecturer.create_question', exam_id=exam.id) }}"
           >
             Add question
           </a>
@@ -152,13 +152,13 @@
                 {% if not exam.is_locked %}
                   <div class="item-actions">
                     <a
-                      href="{{ url_for('admin.edit_question', exam_id=exam.id, question_id=question.id) }}"
+                      href="{{ url_for('lecturer.edit_question', exam_id=exam.id, question_id=question.id) }}"
                     >
                       Edit
                     </a>
 
                     <form
-                      action="{{ url_for('admin.delete_question', exam_id=exam.id, question_id=question.id) }}"
+                      action="{{ url_for('lecturer.delete_question', exam_id=exam.id, question_id=question.id) }}"
                       method="post"
                       onsubmit="return confirm('Delete this question?');"
                     >
@@ -194,7 +194,7 @@
         </div>
 
         <form
-          action="{{ url_for('admin.delete_exam', exam_id=exam.id) }}"
+          action="{{ url_for('lecturer.delete_exam', exam_id=exam.id) }}"
           method="post"
           onsubmit="return confirm('Delete this examination and all its questions?');"
         >

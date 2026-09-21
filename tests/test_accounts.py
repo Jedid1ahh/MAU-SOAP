@@ -146,7 +146,7 @@ def test_student_registration_verification_and_login(client):
     assert login.headers["Location"].endswith("/student/")
     dashboard = client.get("/student/")
     assert b"Student dashboard" in dashboard.data
-    assert b"No examination attempts yet" in dashboard.data
+    assert b"No courses yet" in dashboard.data
 
 
 def test_lecturer_requires_verification_then_admin_approval(client, admin):
@@ -186,7 +186,7 @@ def test_lecturer_requires_verification_then_admin_approval(client, admin):
     assert login.headers["Location"].endswith("/lecturer/")
     dashboard = client.get("/lecturer/")
     assert b"Lecturer dashboard" in dashboard.data
-    assert b"No examinations yet" in dashboard.data
+    assert b"No courses assigned" in dashboard.data
 
 
 def test_registration_rejects_duplicate_and_rolls_back_mail_failure(

@@ -15,7 +15,14 @@ from flask import (
 from sqlalchemy import select
 
 from app.extensions import db
-from app.models import Exam, VerificationToken
+from app.models import (
+    CourseEnrollment,
+    EnrollmentStatus,
+    Exam,
+    Role,
+    User,
+    VerificationToken,
+)
 
 from . import candidate_bp
 from .forms import CandidateIdentityForm, OTPVerificationForm
@@ -55,6 +62,22 @@ def _pending_session_key(exam: Exam) -> str:
 
 def _access_session_key(exam: Exam) -> str:
     return f"candidate_access_token_{exam.id}"
+
+
+def _is_enrolled_student(exam: Exam, email: str) -> bool:
+    """Return whether an active Student accepted this course invitation."""
+
+    return db.session.scalar(
+        select(User.id)
+        .join(CourseEnrollment, CourseEnrollment.student_id == User.id)
+        .where(
+            User.email == email.strip().casefold(),
+            User.role == Role.STUDENT,
+            User.is_active.is_(True),
+            CourseEnrollment.course_id == exam.course_id,
+            CourseEnrollment.status == EnrollmentStatus.ACCEPTED,
+        )
+    ) is not None
 
 
 def _pending_verification(
@@ -120,7 +143,7 @@ def index():
         page_title="Candidate area",
         message=(
             "Use the secure examination link supplied "
-            "by your administrator."
+            "by your Lecturer."
         ),
     )
 
@@ -185,7 +208,14 @@ def exam_landing(token: str):
 
     form = CandidateIdentityForm()
 
-    if form.validate_on_submit():
+    is_valid = form.validate_on_submit()
+    if is_valid and not _is_enrolled_student(exam, form.email.data):
+        form.email.errors.append(
+            "Accept this course invitation from your Student dashboard first."
+        )
+        is_valid = False
+
+    if is_valid:
         (
             raw_otp,
             raw_magic_token,

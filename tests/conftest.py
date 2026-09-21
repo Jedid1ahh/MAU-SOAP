@@ -1,5 +1,7 @@
 """Shared pytest fixtures for the MAU-SOAP test suite."""
 
+from datetime import UTC, datetime
+
 import pytest
 
 from app import create_app
@@ -48,6 +50,26 @@ def admin(app):
             "utf-8"
         ),
         role=Role.ADMIN,
+    )
+    db.session.add(user)
+    db.session.commit()
+    return user
+
+
+@pytest.fixture()
+def lecturer(app, admin):
+    """Create an approved Lecturer for course-workspace route tests."""
+
+    now = datetime.now(UTC)
+    user = User(
+        full_name="Dr. Grace Musa",
+        email="lecturer@mau.edu.ng",
+        password_hash=bcrypt.generate_password_hash(
+            "LecturerTestPassword!"
+        ).decode("utf-8"),
+        role=Role.LECTURER,
+        email_verified_at=now,
+        approved_at=now,
     )
     db.session.add(user)
     db.session.commit()

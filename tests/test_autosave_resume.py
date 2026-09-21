@@ -20,11 +20,13 @@ from app.models import (
     ReleaseOption,
     Submission,
 )
+from tests.helpers import course_for
 
 
 def _exam(admin, *, token="autosave-exam"):
     exam = Exam(
         admin_id=admin.id,
+        course=course_for(admin, "CSC 410", "Cloud Computing"),
         title="Cloud Computing",
         course_code="CSC 410",
         course_title="Cloud Computing",

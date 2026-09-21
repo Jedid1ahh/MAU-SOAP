@@ -8,6 +8,8 @@
     <h1>{{ form_title }}</h1>
 
     <p>
+      <strong>{{ course.code if course is defined else exam.course_code }}</strong>
+      — {{ course.title if course is defined else exam.course_title }}<br>
       Configure the examination details and supervision mode.
       The warning limit is fixed at three for every examination.
     </p>
@@ -21,29 +23,6 @@
           {{ form.title(autocomplete="off") }}
 
           {% for error in form.title.errors %}
-            <span class="field-error">{{ error }}</span>
-          {% endfor %}
-        </div>
-
-        <div class="form-group">
-          {{ form.course_code.label }}
-          {{
-            form.course_code(
-              autocomplete="off",
-              placeholder="CSC 301"
-            )
-          }}
-
-          {% for error in form.course_code.errors %}
-            <span class="field-error">{{ error }}</span>
-          {% endfor %}
-        </div>
-
-        <div class="form-group">
-          {{ form.course_title.label }}
-          {{ form.course_title(autocomplete="off") }}
-
-          {% for error in form.course_title.errors %}
             <span class="field-error">{{ error }}</span>
           {% endfor %}
         </div>
@@ -124,11 +103,11 @@
           class="secondary-button"
           href="{{
             url_for(
-              'admin.exam_detail',
+              'lecturer.exam_detail',
               exam_id=exam.id
             )
             if exam is defined
-            else url_for('admin.index')
+            else url_for('lecturer.course_detail', course_id=course.id)
           }}"
         >
           Cancel
