@@ -227,10 +227,8 @@ def test_exam_detail_and_candidate_share_link_use_token(
     assert f"/exam/{exam.exam_link_token}".encode() in detail.data
     assert b"3 warnings" in detail.data
     assert b"Answer every question" in detail.data
-    assert landing.status_code == 200
-    assert b"Software Testing" in landing.data
-    assert b"Verify your identity" in landing.data
-    assert client.get("/exam/not-a-real-token").status_code == 404
+    assert landing.status_code == 403
+    assert client.get("/exam/not-a-real-token").status_code == 403
 
 
 def test_edit_exam_loads_values_and_updates_settings(

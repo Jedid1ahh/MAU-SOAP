@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 
 from sqlalchemy import select
 
-from app.extensions import bcrypt, db, mail
+from app.extensions import bcrypt, db
 from app.models import (
     Course,
     CourseEnrollment,
@@ -14,7 +14,6 @@ from app.models import (
     ReleaseOption,
     Role,
     User,
-    VerificationToken,
 )
 
 
@@ -315,23 +314,14 @@ def test_exam_link_requires_accepted_registered_course_membership(
     db.session.commit()
     exam = _exam(course, lecturer)
     access_url = f"/exam/{exam.exam_link_token}"
+    _portal_login(client, student, password)
 
-    blocked = client.post(
-        access_url,
-        data={"name": student.full_name, "email": student.email},
-    )
-    assert blocked.status_code == 200
-    assert b"Accept this course invitation" in blocked.data
-    assert db.session.scalar(select(VerificationToken)) is None
+    blocked = client.get(access_url)
+    assert blocked.status_code == 403
 
     enrollment.status = EnrollmentStatus.ACCEPTED
     enrollment.accepted_at = datetime.now(UTC)
     db.session.commit()
-    with mail.record_messages() as outbox:
-        allowed = client.post(
-            access_url,
-            data={"name": student.full_name, "email": student.email},
-        )
+    allowed = client.get(access_url)
     assert allowed.status_code == 302
-    assert len(outbox) == 1
-    assert db.session.scalar(select(VerificationToken)) is not None
+    assert allowed.headers["Location"].endswith("/student/")

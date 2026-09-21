@@ -5,17 +5,6 @@ from wtforms import PasswordField, StringField, SubmitField
 from wtforms.validators import DataRequired, Email, EqualTo, Length
 
 
-class LoginForm(FlaskForm):
-    """Authenticate the pre-provisioned Admin."""
-
-    email = StringField(
-        "Email address",
-        validators=[DataRequired(), Email(), Length(max=255)],
-    )
-    password = PasswordField("Password", validators=[DataRequired()])
-    submit = SubmitField("Log in")
-
-
 class PasswordResetRequestForm(FlaskForm):
     """Request a reset link without revealing whether an account exists."""
 

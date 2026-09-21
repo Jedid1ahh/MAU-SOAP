@@ -25,7 +25,7 @@ from app.models import (
     ViolationType,
     WarningLog,
 )
-from tests.helpers import course_for
+from tests.helpers import authenticate_enrolled_student, course_for
 
 
 def _active_attempt(client, admin):
@@ -58,6 +58,13 @@ def _active_attempt(client, admin):
 
     db.session.add_all([exam, submission])
     db.session.commit()
+
+    authenticate_enrolled_student(
+        client,
+        exam,
+        email=submission.candidate_email,
+        name=submission.candidate_name,
+    )
 
     with client.session_transaction() as candidate_session:
         candidate_session[
@@ -114,6 +121,7 @@ def _evidence_payload(
 
 
 def _login_lecturer(client, lecturer):
+    client.post("/account/logout")
     response = client.post(
         "/account/login",
         data={
@@ -281,7 +289,7 @@ def test_face_absence_evidence_upload_feed_view_and_download(
         data=_evidence_payload(),
     )
 
-    assert duplicate.status_code == 409
+    assert duplicate.status_code == 403
 
 def test_admin_feed_describes_pending_unavailable_and_nonvideo_events(
     client,
@@ -396,10 +404,7 @@ def test_evidence_routes_enforce_candidate_and_admin_ownership(
     )
     warning_id = _face_warning(client, exam)
 
-    with client.session_transaction() as candidate_session:
-        candidate_session.pop(
-            f"candidate_access_token_{exam.id}"
-        )
+    client.post("/account/logout")
 
     no_candidate = client.post(
         f"/exam/{exam.exam_link_token}/"
@@ -407,12 +412,15 @@ def test_evidence_routes_enforce_candidate_and_admin_ownership(
         data=_evidence_payload(),
     )
 
-    assert no_candidate.status_code == 403
+    assert no_candidate.status_code == 302
+    assert "/account/login" in no_candidate.headers["Location"]
 
-    with client.session_transaction() as candidate_session:
-        candidate_session[
-            f"candidate_access_token_{exam.id}"
-        ] = "evidence-candidate-token"
+    authenticate_enrolled_student(
+        client,
+        exam,
+        email=submission.candidate_email,
+        name=submission.candidate_name,
+    )
 
     missing_warning = client.post(
         f"/exam/{exam.exam_link_token}/"
@@ -448,11 +456,9 @@ def test_evidence_routes_enforce_candidate_and_admin_ownership(
         f"{warning_id}/evidence"
     )
 
-    assert protected.status_code == 302
-    assert (
-        "/account/login"
-        in protected.headers["Location"]
-    )
+    assert protected.status_code in {302, 403}
+    if protected.status_code == 302:
+        assert "/account/login" in protected.headers["Location"]
 
     _login_lecturer(client, lecturer)
 

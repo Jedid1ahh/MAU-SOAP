@@ -69,7 +69,7 @@ gantt
 | 2 | Database Schema Implementation | — | Fully migrated database matching Execution.md's schema |
 | 3 | Admin Authentication & Account Management | FR1, FR2, FR13, FR15, NFR2 | Default Admin provisioning plus working login/logout/reset; no registration |
 | 4 | Exam Management Foundation | FR3, FR4, FR5, FR16 | Full exam lifecycle foundation, transferred to Lecturers in Phase 12 |
-| 5 | Candidate Verification | FR6, NFR7, NFR8 | Candidate reaches exam-loading screen via OTP/magic link |
+| 5 | Candidate Verification (superseded) | Historical FR6, NFR7, NFR8 | Replaced by authenticated Student access in Phase 13 |
 | 6 | Exam Session Core | FR18, FR19, part of FR10 | Server-timed session, question delivery, basic submit |
 | 7 | Supervision Features | FR7, FR8, FR9 | Copy-paste block, screenshot detection, webcam monitoring live |
 | 8 | Auto-Submit, Autosave/Resume, Live Alerts | FR10, FR17, FR9 (alert portion) | Session resilience + real-time owner visibility |
@@ -142,6 +142,9 @@ transferred from Admin to assigned Lecturers in Phase 12.
 **Tools:** Flask, Jinja2, SQLAlchemy, Python `secrets`
 
 ### Phase 5 — Candidate Verification (OTP + Magic Link)
+
+> Historical implementation: Phase 13 retires this per-exam flow in favor of
+> the logged-in Student account plus accepted course enrollment.
 **Covers:** FR6, NFR7, NFR8
 **Objective:** Implement the passwordless candidate verification flow.
 **Tasks:**
@@ -223,14 +226,14 @@ transferred from Admin to assigned Lecturers in Phase 12.
 
 ### Phase 11 — Multi-role Accounts & Permissions
 **Covers:** FR20, FR21, FR22, NFR2
-**Objective:** Expand the single-Admin/unregistered-Candidate model into isolated Admin, Lecturer, and Student accounts without weakening the secure examination-link flow.
+**Objective:** Expand the single-Admin/unregistered-Candidate model into isolated Admin, Lecturer, and Student accounts with one role-aware login.
 **Tasks:**
 - Keep the Admin pre-provisioned with no registration route
 - Add Lecturer registration restricted to `@mau.edu.ng`, email verification, and Admin approval
 - Add Student registration restricted to `@student.mau.edu.ng` and email verification
 - Add Admin account oversight for approval, suspension, and restoration
 - Enforce server-side role checks for every protected portal route
-- Preserve examination OTP/magic-link verification and connect records by normalized Student email
+- Replace per-exam OTP/magic-link verification with authenticated Student access
 **Dependencies:** Phase 10
 **Deliverable:** Three isolated account roles with tested registration, verification, approval, login, and access controls.
 **Tools:** Flask-Login, Flask-WTF, Flask-Mail, Flask-Bcrypt, SQLAlchemy
@@ -258,7 +261,7 @@ complete lifecycle of only the courses currently assigned to them.
 - Enroll a Student only after acceptance; support enrollment in multiple courses
 - Group examinations, attempts, and results under their respective courses
 - Show pending/released result state and detailed released results
-- Require accepted course enrollment before exam-link OTP/magic-link verification
+- Require a logged-in Student and accepted course enrollment before every exam action
 - Prevent one Student from reading another Student's submissions or results
 **Dependencies:** Phase 11
 **Deliverable:** A verified Student can accept courses, enter their enrolled examinations
@@ -272,7 +275,7 @@ securely, and review only their own course-grouped history and released results.
 - Authorization/behavior tests confirming that no Admin registration endpoint exists and only the seeded default Admin can authenticate
 - Exam-lock test confirming that the first Candidate start prevents structural editing/deletion before final submission
 - Scheduled-release test confirming that results with ungraded open-ended responses remain withheld until grading is complete
-- Manual end-to-end test: Admin course assignment, Lecturer exam creation and Student invitation, Student acceptance and verification, exam-taking, violations, auto-submit/resume, grading, and release
+- Manual end-to-end test: unified login, Admin course assignment, Lecturer exam creation and Student invitation, Student acceptance, direct exam-taking, violations, auto-submit/resume, grading, and release
 - Light load/performance smoke test simulating multiple concurrent candidates
 - Security review: token entropy, hashed storage, HTTPS-only cookies, SQL-injection safety via the ORM
 **Dependencies:** Phases 12 and 13 both complete

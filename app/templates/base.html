@@ -19,19 +19,14 @@
             <a href="{{ url_for('student.index') }}">Student dashboard</a>
           {% endif %}
           <form
-            action="{{ url_for(
-              'admin.logout'
-              if current_user.role.value == 'admin'
-              else 'accounts.logout'
-            ) }}"
+            action="{{ url_for('accounts.logout') }}"
             method="post"
           >
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button class="link-button" type="submit">Log out</button>
           </form>
         {% else %}
-          <a href="{{ url_for('accounts.login') }}">Student/Lecturer login</a>
-          <a href="{{ url_for('admin.login') }}">Admin login</a>
+          <a href="{{ url_for('accounts.login') }}">Login</a>
         {% endif %}
       </nav>
     </header>

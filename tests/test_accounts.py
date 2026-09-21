@@ -273,7 +273,7 @@ def test_invalid_verification_link_and_email_delivery_service(
     assert "raw-token" in sent[0].body
 
 
-def test_account_login_rejects_invalid_inactive_and_wrong_portal(client, admin):
+def test_account_login_rejects_invalid_and_inactive_accounts(client, admin):
     student = _user(email="student@student.mau.edu.ng", role=Role.STUDENT)
     inactive = _user(
         email="inactive@student.mau.edu.ng",
@@ -290,7 +290,7 @@ def test_account_login_rejects_invalid_inactive_and_wrong_portal(client, admin):
     assert b"Invalid email address or password" in unknown.data
     assert b"Invalid email address or password" in inactive_response.data
     assert admin_response.status_code == 302
-    assert admin_response.headers["Location"].endswith("/admin/login")
+    assert admin_response.headers["Location"].endswith("/admin/")
 
 
 def test_account_login_accepts_only_local_next_and_logout_is_post_only(client):

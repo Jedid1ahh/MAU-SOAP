@@ -4,6 +4,7 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
+from sqlalchemy import select
 
 from app.candidate.services import credential_digest
 from app.extensions import db
@@ -23,7 +24,7 @@ from app.result_release import (
     release_result_now,
     synchronize_result_release,
 )
-from tests.helpers import course_for
+from tests.helpers import authenticate_enrolled_student, course_for
 
 
 def _exam(
@@ -129,6 +130,15 @@ def _candidate_session(
     exam,
     raw_token,
 ):
+    submission = db.session.scalar(
+        select(Submission).where(Submission.exam_id == exam.id)
+    )
+    authenticate_enrolled_student(
+        client,
+        exam,
+        email=submission.candidate_email,
+        name=submission.candidate_name,
+    )
     with client.session_transaction() as candidate_session:
         candidate_session[
             f"candidate_access_token_{exam.id}"
@@ -330,7 +340,8 @@ def test_candidate_result_requires_matching_finalized_session(
         f"/exam/{exam.exam_link_token}/result"
     )
 
-    assert unknown.status_code == 404
+    assert unknown.status_code == 302
+    assert "/account/login" in unknown.headers["Location"]
     assert missing.status_code == 302
     assert wrong.status_code == 302
     assert active.status_code == 302

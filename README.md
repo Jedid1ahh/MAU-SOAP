@@ -12,21 +12,24 @@ Lecturer, and Student portals.
 - Lecturer registration with exact `@mau.edu.ng` validation, email
   verification, and Admin approval
 - Student registration with exact `@student.mau.edu.ng` validation
+- One login page for all roles, with credential-based redirection to the
+  Admin, Lecturer, or Student dashboard
 - Role-isolated Admin, Lecturer, and Student dashboards
 - Admin-created courses assigned to exactly one Lecturer at a time, with full
   workspace transfer on reassignment
 - Lecturer-owned examination/question management, live supervision, grading,
   and result release, isolated by assigned course
 - Registered-Student invitations, acceptance, enrollment, and course rosters
-- Secure examination links with OTP and magic-link verification
+- Logged-in, accepted-enrollment-only examination access with no second OTP
+  or email prompt
 - Server-authoritative timing, autosave/resume, supervision warnings, and
   third-warning auto-submission
 - Automatic and manual grading
 - Immediate and scheduled result release, with ungraded open-ended results
   withheld
 - Student examinations, attempts, and results grouped by enrolled course
-- Exam-link verification restricted to registered Students who accepted that
-  course's invitation
+- Direct exam opening from the Student dashboard; anonymous, cross-role, and
+  non-enrolled access is rejected server-side
 
 A full assignment-resource workflow is not yet implemented; the current
 course workspace covers invitations, enrollments, examinations, grading, and
@@ -37,10 +40,10 @@ results.
 ```text
 MAU-SOAP/
 ├── app/
-│   ├── accounts/       # Lecturer/Student registration and login
+│   ├── accounts/       # Role-aware login and Lecturer/Student registration
 │   ├── admin/          # Admin authentication and system oversight
 │   ├── api/            # JSON health and session endpoints
-│   ├── candidate/      # Secure examination-link flow
+│   ├── candidate/      # Authenticated Student examination sessions
 │   ├── lecturer/       # Lecturer portal
 │   ├── student/        # Student portal and result access
 │   ├── models/         # SQLAlchemy models

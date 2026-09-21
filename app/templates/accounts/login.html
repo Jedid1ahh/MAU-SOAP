@@ -1,12 +1,15 @@
 {% extends "base.html" %}
 
-{% block title %}Lecturer and Student login | MAU-SOAP{% endblock %}
+{% block title %}Login | MAU-SOAP{% endblock %}
 
 {% block content %}
   <section class="card auth-card">
     <span class="eyebrow">Institutional access</span>
-    <h1>Lecturer and Student login</h1>
-    <p>Use the verified institutional account registered with MAU-SOAP.</p>
+    <h1>Login</h1>
+    <p>
+      Use your MAU-SOAP account. You will be sent to the Admin, Lecturer, or
+      Student dashboard assigned to your credentials.
+    </p>
 
     <form method="post" novalidate>
       {{ form.hidden_tag() }}
@@ -34,7 +37,9 @@
       <a href="{{ url_for('accounts.register_lecturer') }}">
         Register as Lecturer
       </a>
-      <a href="{{ url_for('admin.login') }}">Admin login</a>
+      <a href="{{ url_for('admin.request_password_reset') }}">
+        Forgot Admin password?
+      </a>
     </div>
   </section>
 {% endblock %}

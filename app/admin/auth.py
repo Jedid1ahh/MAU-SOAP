@@ -22,7 +22,7 @@ def admin_required(view: ViewFunction) -> ViewFunction:
         if not current_user.is_authenticated:
             return redirect(
                 url_for(
-                    "admin.login",
+                    "accounts.login",
                     next=request.full_path.rstrip("?"),
                 )
             )

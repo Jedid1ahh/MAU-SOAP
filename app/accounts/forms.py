@@ -66,7 +66,7 @@ class StudentRegistrationForm(RegistrationForm):
 
 
 class AccountLoginForm(FlaskForm):
-    """Authenticate an approved Lecturer or verified Student."""
+    """Authenticate an Admin, approved Lecturer, or verified Student."""
 
     email = StringField(
         "Institutional email address",

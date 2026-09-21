@@ -84,12 +84,18 @@
                       Check result
                     </a>
                   {% else %}
-                    <a
-                      class="primary-button button-auto"
-                      href="{{ url_for('candidate.exam_landing', token=exam.exam_link_token) }}"
+                    <p class="muted-text">
+                      Opening starts the server timer and examination supervision.
+                    </p>
+                    <form
+                      method="post"
+                      action="{{ url_for('candidate.start_exam', token=exam.exam_link_token) }}"
                     >
-                      {{ "Resume examination" if submission else "Open examination" }}
-                    </a>
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                      <button class="primary-button button-auto" type="submit">
+                        {{ "Resume examination" if submission else "Open examination" }}
+                      </button>
+                    </form>
                   {% endif %}
                 </article>
               {% endfor %}

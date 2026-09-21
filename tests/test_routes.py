@@ -17,14 +17,14 @@ def test_admin_area_requires_login(client):
     response = client.get("/admin/")
 
     assert response.status_code == 302
-    assert "/admin/login" in response.headers["Location"]
+    assert "/account/login" in response.headers["Location"]
 
 
-def test_candidate_placeholder(client):
+def test_candidate_area_requires_student_login(client):
     response = client.get("/exam/")
 
-    assert response.status_code == 200
-    assert b"Candidate area" in response.data
+    assert response.status_code == 302
+    assert "/account/login" in response.headers["Location"]
 
 
 def test_service_health(client):

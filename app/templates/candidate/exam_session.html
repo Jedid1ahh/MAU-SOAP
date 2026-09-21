@@ -293,17 +293,13 @@
       sessionRoot.dataset.warningCount =
         payload.warning_count;
 
-      sessionRoot.dataset.resumeToken =
-        payload.resume_token;
-
       document.dispatchEvent(
         new CustomEvent(
           "mau-soap:questions-loaded",
           {
             detail: {
               responses: payload.responses,
-              lastSavedAt: payload.last_saved_at,
-              resumeToken: payload.resume_token
+              lastSavedAt: payload.last_saved_at
             }
           }
         )

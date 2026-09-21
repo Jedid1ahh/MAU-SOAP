@@ -19,8 +19,8 @@ def test_login_page_is_available_without_registration(client):
     response = client.get("/admin/login")
 
     assert response.status_code == 200
-    assert b"Welcome back" in response.data
-    assert b"Forgot your password?" in response.data
+    assert b"<h1>Login</h1>" in response.data
+    assert b"Forgot Admin password?" in response.data
 
     for path in ("/admin/register", "/admin/signup"):
         assert client.get(path).status_code == 404

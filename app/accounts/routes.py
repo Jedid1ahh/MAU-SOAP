@@ -148,7 +148,7 @@ def verify_email(token: str):
 
 @accounts_bp.route("/login", methods=["GET", "POST"])
 def login():
-    """Authenticate an approved Lecturer or verified Student account."""
+    """Authenticate any role and send it to the matching dashboard."""
 
     if current_user.is_authenticated:
         return redirect(url_for(portal_endpoint(current_user.role)))
@@ -161,9 +161,6 @@ def login():
             user.password_hash,
             form.password.data,
         )
-        if user is not None and user.role is Role.ADMIN and valid_password:
-            flash("Use the Admin login page for the Admin account.", "info")
-            return redirect(url_for("admin.login"))
         if user is not None and valid_password and user.is_active:
             if not user.is_email_verified:
                 flash("Verify your institutional email before logging in.", "error")
@@ -184,7 +181,7 @@ def login():
 
 @accounts_bp.post("/logout")
 def logout():
-    """End any authenticated Lecturer or Student session."""
+    """End any authenticated Admin, Lecturer, or Student session."""
 
     if current_user.is_authenticated:
         logout_user()
