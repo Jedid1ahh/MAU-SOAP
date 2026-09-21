@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Student dashboard | MAU-SOAP{% endblock %}
+
+{% block content %}
+  <section class="dashboard-shell">
+    <div class="page-heading">
+      <div>
+        <span class="eyebrow">Verified Student account</span>
+        <h1>Student dashboard</h1>
+        <p>Welcome, <strong>{{ current_user.full_name }}</strong>.</p>
+      </div>
+    </div>
+
+    {% if submissions %}
+      <div class="exam-grid">
+        {% for submission in submissions %}
+          <article class="card exam-card">
+            <div class="card-heading">
+              {% if not submission.is_finalized %}
+                <span class="status-badge status-pending">In progress</span>
+              {% elif submission.result and submission.result.is_released %}
+                <span class="status-badge">Result released</span>
+              {% else %}
+                <span class="status-badge status-pending">Result pending</span>
+              {% endif %}
+            </div>
+            <h2>{{ submission.exam.title }}</h2>
+            <p>
+              <strong>{{ submission.exam.course_code }}</strong>
+              — {{ submission.exam.course_title }}
+            </p>
+            <dl class="metadata-list metadata-list-stacked">
+              <div><dt>Started</dt><dd>{{ submission.started_at }}</dd></div>
+              {% if submission.submitted_at %}
+                <div><dt>Submitted</dt><dd>{{ submission.submitted_at }}</dd></div>
+              {% endif %}
+            </dl>
+            {% if submission.is_finalized %}
+              <a
+                class="secondary-button"
+                href="{{ url_for('student.result', submission_id=submission.id) }}"
+              >
+                Check result
+              </a>
+            {% endif %}
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <section class="card empty-state">
+        <h2>No examination attempts yet</h2>
+        <p>
+          Open the secure examination link supplied by your Lecturer to begin.
+          Your attempt and released result will appear here.
+        </p>
+      </section>
+    {% endif %}
+  </section>
+{% endblock %}

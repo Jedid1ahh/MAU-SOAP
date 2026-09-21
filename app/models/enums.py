@@ -9,6 +9,8 @@ class StringEnum(str, Enum):
 
 class Role(StringEnum):
     ADMIN = "admin"
+    LECTURER = "lecturer"
+    STUDENT = "student"
 
 
 class MonitorType(StringEnum):

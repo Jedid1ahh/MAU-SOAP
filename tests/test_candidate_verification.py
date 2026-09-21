@@ -53,7 +53,7 @@ def _request_verification(
     exam,
     *,
     name="Amina Bello",
-    email="AMINA@MAU.EDU.NG",
+        email="AMINA@STUDENT.MAU.EDU.NG",
 ):
     with mail.record_messages() as outbox:
         response = client.post(
@@ -91,7 +91,7 @@ def _verification(exam, **overrides):
     values = {
         "exam": exam,
         "candidate_name": "Amina Bello",
-        "candidate_email": "amina@mau.edu.ng",
+        "candidate_email": "amina@student.mau.edu.ng",
         "otp_hash": credential_digest("123456"),
         "magic_token_hash": credential_digest(
             "magic-token"
@@ -144,7 +144,7 @@ def test_candidate_landing_validates_identity_and_domain(
         f"/exam/{exam.exam_link_token}",
         data={
             "name": "Amina Bello",
-            "email": "amina@gmail.com",
+                "email": "amina@mau.edu.ng",
         },
     )
 
@@ -158,7 +158,7 @@ def test_candidate_landing_validates_identity_and_domain(
 
     assert wrong_domain.status_code == 200
     assert (
-        b"ending in @mau.edu.ng"
+            b"ending in @student.mau.edu.ng"
         in wrong_domain.data
     )
 
@@ -181,7 +181,7 @@ def test_request_sends_hashed_otp_and_magic_link(
 
     assert len(messages) == 1
     assert messages[0].recipients == [
-        "amina@mau.edu.ng"
+            "amina@student.mau.edu.ng"
     ]
     assert "Database Systems" in messages[0].subject
 
@@ -197,7 +197,7 @@ def test_request_sends_hashed_otp_and_magic_link(
     assert verification.candidate_name == "Amina Bello"
     assert (
         verification.candidate_email
-        == "amina@mau.edu.ng"
+            == "amina@student.mau.edu.ng"
     )
     assert (
         verification.otp_hash
@@ -265,7 +265,7 @@ def test_token_generation_uses_csprng_sizes(
     ) = create_verification(
         exam,
         " Candidate Name ",
-        " CANDIDATE@MAU.EDU.NG ",
+            " CANDIDATE@STUDENT.MAU.EDU.NG ",
     )
 
     raw_session = complete_verification(
@@ -288,7 +288,7 @@ def test_token_generation_uses_csprng_sizes(
     )
     assert (
         verification.candidate_email
-        == "candidate@mau.edu.ng"
+            == "candidate@student.mau.edu.ng"
     )
 
 
@@ -342,7 +342,7 @@ def test_email_failure_rolls_back_verification(
         f"/exam/{exam.exam_link_token}",
         data={
             "name": "Amina Bello",
-            "email": "amina@mau.edu.ng",
+                "email": "amina@student.mau.edu.ng",
         },
     )
 
@@ -385,7 +385,7 @@ def test_email_service_sends_when_delivery_is_enabled(
 
     assert len(sent_messages) == 1
     assert sent_messages[0].recipients == [
-        "amina@mau.edu.ng"
+            "amina@student.mau.edu.ng"
     ]
     assert "123456" in sent_messages[0].body
 

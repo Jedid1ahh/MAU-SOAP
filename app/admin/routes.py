@@ -16,8 +16,9 @@ from flask import (
 from flask_login import current_user, login_user, logout_user
 from sqlalchemy import select
 
+from app.access import portal_endpoint
 from app.extensions import bcrypt, db
-from app.models import Exam, PasswordResetToken, User
+from app.models import Exam, PasswordResetToken, Role, User
 
 from . import admin_bp
 from .auth import admin_required
@@ -46,7 +47,7 @@ def login():
     """Authenticate the one pre-provisioned Admin account."""
 
     if current_user.is_authenticated:
-        return redirect(url_for("admin.index"))
+        return redirect(url_for(portal_endpoint(current_user.role)))
 
     form = LoginForm()
     if form.validate_on_submit():
@@ -57,7 +58,12 @@ def login():
             form.password.data,
         )
 
-        if user is not None and user.is_active and password_is_valid:
+        if (
+            user is not None
+            and user.role is Role.ADMIN
+            and user.can_access_portal
+            and password_is_valid
+        ):
             login_user(user)
             session.permanent = True
             destination = _safe_next_url(request.args.get("next"))
@@ -98,7 +104,12 @@ def request_password_reset():
     form = PasswordResetRequestForm()
     if form.validate_on_submit():
         email = form.email.data.strip().casefold()
-        user = db.session.scalar(select(User).where(User.email == email))
+        user = db.session.scalar(
+            select(User).where(
+                User.email == email,
+                User.role == Role.ADMIN,
+            )
+        )
 
         if user is not None and user.is_active:
             raw_token, _ = create_reset_token(user)

@@ -121,7 +121,14 @@ body {
 
 .form-group input,
 .form-group select,
-.form-group textarea,
+.form-group textarea {
+  border: 1px solid #aebbc9;
+  border-radius: 0.45rem;
+  font: inherit;
+  padding: 0.75rem;
+  width: 100%;
+}
+
 .verification-code input {
   font-size: 1.6rem;
   font-weight: 800;
@@ -333,6 +340,38 @@ body {
   margin-top: 1.5rem;
   padding-top: 1rem;
   text-align: center;
+}
+
+.auth-options,
+.portal-actions,
+.account-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.auth-options {
+  border-top: 1px solid #e3e9f0;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  text-align: center;
+}
+
+.portal-actions {
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  margin-top: 1.5rem;
+}
+
+.account-list {
+  grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+}
+
+.account-card {
+  max-width: none;
+}
+
+.status-pending {
+  background: #fff3cd;
+  color: #735c0f;
 }
 
 .status-badge {

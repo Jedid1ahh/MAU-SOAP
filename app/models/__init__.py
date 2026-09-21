@@ -1,5 +1,6 @@
 """Public model registry used by the application and Flask-Migrate."""
 
+from .account_verification_token import AccountVerificationToken
 from .answer_grade import AnswerGrade
 from .enums import (
     GradedBy,
@@ -21,6 +22,7 @@ from .warning_log import WarningLog
 
 MODEL_REGISTRY = (
     User,
+    AccountVerificationToken,
     Exam,
     Question,
     Submission,
@@ -33,6 +35,7 @@ MODEL_REGISTRY = (
 
 __all__ = [
     "MODEL_REGISTRY",
+    "AccountVerificationToken",
     "AnswerGrade",
     "Exam",
     "GradedBy",

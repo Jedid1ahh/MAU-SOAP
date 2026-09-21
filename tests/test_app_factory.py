@@ -21,8 +21,9 @@ def test_factory_uses_testing_configuration(app):
     )
     assert (
         app.config["CANDIDATE_EMAIL_DOMAIN"]
-        == "mau.edu.ng"
+        == "student.mau.edu.ng"
     )
+    assert app.config["LECTURER_EMAIL_DOMAIN"] == "mau.edu.ng"
     assert (
         app.config[
             "CANDIDATE_VERIFICATION_MAX_AGE_MINUTES"
@@ -83,6 +84,9 @@ def test_factory_registers_required_blueprints(app):
         "admin",
         "candidate",
         "api",
+        "accounts",
+        "lecturer",
+        "student",
     } <= set(app.blueprints)
 
 
@@ -103,7 +107,11 @@ def test_factory_rejects_unknown_configuration():
         create_app("not-a-real-environment")
 
 
-def test_factory_rejects_domain_with_at_symbol():
+@pytest.mark.parametrize(
+    "setting",
+    ["CANDIDATE_EMAIL_DOMAIN", "LECTURER_EMAIL_DOMAIN"],
+)
+def test_factory_rejects_domain_with_at_symbol(setting):
     """The configured domain is stored without an @ prefix."""
 
     with pytest.raises(
@@ -113,7 +121,7 @@ def test_factory_rejects_domain_with_at_symbol():
         create_app(
             "testing",
             {
-                "CANDIDATE_EMAIL_DOMAIN": "@mau.edu.ng",
+                setting: "@mau.edu.ng",
             },
         )
 
@@ -130,6 +138,7 @@ def test_configuration_rejects_missing_required_values():
                 "SECRET_KEY": None,
                 "SQLALCHEMY_DATABASE_URI": None,
                 "CANDIDATE_EMAIL_DOMAIN": "mau.edu.ng",
+                "LECTURER_EMAIL_DOMAIN": "mau.edu.ng",
             }
         )
 
@@ -163,6 +172,14 @@ def test_configuration_rejects_invalid_evidence_limits(
         RuntimeError,
         match=message,
     ):
+        validate_configuration(configured)
+
+
+def test_configuration_rejects_invalid_account_verification_lifetime(app):
+    configured = dict(app.config)
+    configured["ACCOUNT_VERIFICATION_MAX_AGE_MINUTES"] = 0
+
+    with pytest.raises(RuntimeError, match="ACCOUNT_VERIFICATION"):
         validate_configuration(configured)
 
 

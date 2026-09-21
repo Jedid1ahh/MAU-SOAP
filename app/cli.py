@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import secrets
+from datetime import UTC, datetime
 from decimal import Decimal
 
 import click
@@ -52,9 +53,12 @@ def _seed_admin(email: str, password: str) -> tuple[User, bool]:
         )
 
     admin = User(
+        full_name="System Administrator",
         email=normalized_email,
         password_hash=bcrypt.generate_password_hash(password).decode("utf-8"),
         role=Role.ADMIN,
+        email_verified_at=datetime.now(UTC),
+        approved_at=datetime.now(UTC),
     )
     db.session.add(admin)
     db.session.flush()

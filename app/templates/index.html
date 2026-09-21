@@ -1,15 +1,25 @@
 {% extends "base.html" %}
 
-{% block title %}MAU-SOAP | Phase 1{% endblock %}
+{% block title %}MAU-SOAP | Secure Online Assessment{% endblock %}
 
 {% block content %}
   <section class="card">
-    <span class="status-badge">Phase 1 running</span>
+    <span class="status-badge">Secure online assessment</span>
     <h1>MAU-SOAP</h1>
     <p>
-      The Flask application is running successfully. The Admin, Candidate, and
-      API foundations are ready for the next implementation phases.
+      Sign in to the appropriate portal or open the secure examination link
+      supplied by your Lecturer.
     </p>
+    <div class="portal-actions">
+      <a class="primary-button button-auto" href="{{ url_for('accounts.login') }}">
+        Student/Lecturer login
+      </a>
+      <a class="secondary-button" href="{{ url_for('accounts.register_student') }}">
+        Student registration
+      </a>
+      <a class="secondary-button" href="{{ url_for('accounts.register_lecturer') }}">
+        Lecturer registration
+      </a>
+    </div>
   </section>
 {% endblock %}
-

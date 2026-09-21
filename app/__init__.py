@@ -62,12 +62,12 @@ def _initialize_extensions(app: Flask) -> None:
     csrf.init_app(app)
 
     login_manager.login_view = "admin.login"
-    login_manager.login_message = "Please log in to access the Admin area."
+    login_manager.login_message = "Please log in to access this area."
     login_manager.login_message_category = "info"
 
     @login_manager.user_loader
     def load_user(user_id: str):
-        """Restore the logged-in Admin from Flask's signed session."""
+        """Restore an authenticated account from Flask's signed session."""
 
         from .models import User
 
@@ -79,13 +79,19 @@ def _initialize_extensions(app: Flask) -> None:
 def _register_blueprints(app: Flask) -> None:
     """Register route groups while keeping the factory concise."""
 
+    from .accounts import accounts_bp
     from .admin import admin_bp
     from .api import api_bp
     from .candidate import candidate_bp
+    from .lecturer import lecturer_bp
     from .main import main_bp
+    from .student import student_bp
 
     app.register_blueprint(main_bp)
+    app.register_blueprint(accounts_bp, url_prefix="/account")
     app.register_blueprint(admin_bp, url_prefix="/admin")
+    app.register_blueprint(lecturer_bp, url_prefix="/lecturer")
+    app.register_blueprint(student_bp, url_prefix="/student")
     app.register_blueprint(candidate_bp, url_prefix="/exam")
     app.register_blueprint(api_bp, url_prefix="/api/v1")
 

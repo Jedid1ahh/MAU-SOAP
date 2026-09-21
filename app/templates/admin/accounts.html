@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}Account management | MAU-SOAP{% endblock %}
+
+{% block content %}
+  <section class="dashboard-shell">
+    <div class="page-heading">
+      <div>
+        <span class="eyebrow">Role and access control</span>
+        <h1>Lecturer and Student accounts</h1>
+        <p>Approve verified Lecturers and manage institutional access.</p>
+      </div>
+      <a class="secondary-button" href="{{ url_for('admin.index') }}">
+        Back to dashboard
+      </a>
+    </div>
+
+    {% if users %}
+      <div class="account-list">
+        {% for user in users %}
+          <article class="card account-card">
+            <div class="card-heading">
+              <div>
+                <span class="eyebrow">{{ user.role.value|title }}</span>
+                <h2>{{ user.full_name }}</h2>
+              </div>
+              {% if not user.is_active %}
+                <span class="status-badge status-locked">Suspended</span>
+              {% elif not user.is_email_verified %}
+                <span class="status-badge status-pending">Email pending</span>
+              {% elif not user.is_approved %}
+                <span class="status-badge status-pending">Approval pending</span>
+              {% else %}
+                <span class="status-badge">Active</span>
+              {% endif %}
+            </div>
+
+            <p>{{ user.email }}</p>
+
+            <div class="item-actions">
+              {% if user.role.value == "lecturer"
+                    and user.is_email_verified
+                    and not user.is_approved %}
+                <form
+                  action="{{ url_for('admin.approve_lecturer', user_id=user.id) }}"
+                  method="post"
+                >
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button class="primary-button button-auto" type="submit">
+                    Approve Lecturer
+                  </button>
+                </form>
+              {% endif %}
+
+              <form
+                action="{{ url_for('admin.toggle_account_active', user_id=user.id) }}"
+                method="post"
+              >
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button
+                  class="{{ 'secondary-button' if not user.is_active else 'danger-button' }}"
+                  type="submit"
+                >
+                  {{ "Restore" if not user.is_active else "Suspend" }}
+                </button>
+              </form>
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <section class="card empty-state">
+        <h2>No institutional accounts yet</h2>
+        <p>New Lecturer and Student registrations will appear here.</p>
+      </section>
+    {% endif %}
+  </section>
+{% endblock %}

@@ -228,14 +228,7 @@ def test_incomplete_result_cannot_release_automatically_or_manually(
 
 
 def test_scheduled_result_releases_only_when_due(admin):
-    release_time = datetime(
-        2026,
-        8,
-        27,
-        12,
-        0,
-        tzinfo=UTC,
-    )
+    release_time = datetime.now(UTC) + timedelta(days=1)
 
     exam = _exam(
         admin,

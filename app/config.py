@@ -54,6 +54,10 @@ class BaseConfig:
 
     CANDIDATE_EMAIL_DOMAIN = os.getenv(
         "CANDIDATE_EMAIL_DOMAIN",
+        "student.mau.edu.ng",
+    )
+    LECTURER_EMAIL_DOMAIN = os.getenv(
+        "LECTURER_EMAIL_DOMAIN",
         "mau.edu.ng",
     )
 
@@ -82,6 +86,12 @@ class BaseConfig:
         os.getenv(
             "PASSWORD_RESET_MAX_AGE_MINUTES",
             "30",
+        )
+    )
+    ACCOUNT_VERIFICATION_MAX_AGE_MINUTES = int(
+        os.getenv(
+            "ACCOUNT_VERIFICATION_MAX_AGE_MINUTES",
+            "60",
         )
     )
     CANDIDATE_VERIFICATION_MAX_AGE_MINUTES = int(
@@ -187,14 +197,23 @@ def validate_configuration(
             "Copy .env.example to .env and provide real values."
         )
 
-    domain = str(
-        config.get("CANDIDATE_EMAIL_DOMAIN", "")
-    ).strip()
+    for setting, example in (
+        (
+            "CANDIDATE_EMAIL_DOMAIN",
+            "student.mau.edu.ng",
+        ),
+        ("LECTURER_EMAIL_DOMAIN", "mau.edu.ng"),
+    ):
+        domain = str(config.get(setting, "")).strip()
+        if not domain or "@" in domain:
+            raise RuntimeError(
+                f"{setting} must be a bare domain "
+                f"such as {example}."
+            )
 
-    if not domain or "@" in domain:
+    if int(config.get("ACCOUNT_VERIFICATION_MAX_AGE_MINUTES", 0)) <= 0:
         raise RuntimeError(
-            "CANDIDATE_EMAIL_DOMAIN must be a bare "
-            "domain such as mau.edu.ng."
+            "ACCOUNT_VERIFICATION_MAX_AGE_MINUTES must be positive."
         )
 
     if (

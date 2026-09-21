@@ -10,10 +10,10 @@ build sequence. Each phase maps to the specific FR/NFR IDs defined in `Execution
 |---|---|
 | Requirements Gathering | Complete — captured in `Execution.md` |
 | System Analysis & Design | Complete — captured in `Execution.md` + schema/diagram files |
-| Implementation | Phases 1–10 below |
-| Testing & Evaluation | Phases 11, 13 below |
-| Deployment | Phase 12 below |
-| Documentation (outside the original 5-phase model, added as necessary) | Phase 14 below |
+| Implementation | Phases 1–13 below |
+| Testing & Evaluation | Phases 14, 16 below |
+| Deployment | Phase 15 below |
+| Documentation (outside the original 5-phase model, added as necessary) | Phase 17 below |
 
 ---
 
@@ -47,11 +47,16 @@ gantt
     P9 Grading Engine               :p9, after p6, 14d
     P10 Result Management           :p10, after p9, 7d
 
+    section Institutional Portals
+    P11 Multi-role Accounts         :p11, after p10, 7d
+    P12 Lecturer Dashboard          :p12, after p11, 10d
+    P13 Student Dashboard           :p13, after p11, 7d
+
     section QA & Launch
-    P11 Integration Testing         :p11, after p8 p10, 7d
-    P12 Deployment                  :p12, after p11, 7d
-    P13 UAT & TAM Evaluation        :p13, after p12, 7d
-    P14 Documentation & Handover    :p14, after p13, 7d
+    P14 Integration Testing         :p14, after p12 p13, 7d
+    P15 Deployment                  :p15, after p14, 7d
+    P16 UAT & TAM Evaluation        :p16, after p15, 7d
+    P17 Documentation & Handover    :p17, after p16, 7d
 ```
 
 ---
@@ -70,10 +75,13 @@ gantt
 | 8 | Auto-Submit, Autosave/Resume, Live Alerts | FR10, FR17, FR9 (alert portion) | Session resilience + real-time Admin visibility |
 | 9 | Grading Engine | FR11, FR14 | Auto-grading + manual review queue |
 | 10 | Result Management & Scheduled Release | FR12 | Immediate and unattended scheduled release working, with ungraded open-ended results withheld |
-| 11 | Integration & System Testing | NFR4, NFR5 | Passing test suite, documented end-to-end run |
-| 12 | Deployment | NFR3, NFR5, NFR6 | Live system at mausoap.com.ng over HTTPS |
-| 13 | User Acceptance Testing & TAM Evaluation | Proposal Objective iii | UAT results feeding Chapter Four |
-| 14 | Documentation & Handover | NFR6 | Setup, schema, and runbook docs handed to the university |
+| 11 | Multi-role Accounts & Permissions | FR20–FR22, NFR2 | Lecturer/Student registration, verification, approval, and role isolation |
+| 12 | Lecturer Dashboard | FR23 | Lecturer-owned examination lifecycle and oversight |
+| 13 | Student Dashboard | FR24 | Student attempts and released results in one protected portal |
+| 14 | Integration & System Testing | NFR4, NFR5 | Passing test suite, documented end-to-end run |
+| 15 | Deployment | NFR3, NFR5, NFR6 | Live system at mausoap.com.ng over HTTPS |
+| 16 | User Acceptance Testing & TAM Evaluation | Proposal Objective iii | UAT results feeding Chapter Four |
+| 17 | Documentation & Handover | NFR6 | Setup, schema, and runbook docs handed to the university |
 
 ---
 
@@ -212,7 +220,43 @@ gantt
 **Deliverable:** Both release modes work end-to-end, including the fully automated scheduled path.
 **Tools:** Linux `cron`, Flask, Flask-Mail (optional)
 
-### Phase 11 — Integration & System Testing
+### Phase 11 — Multi-role Accounts & Permissions
+**Covers:** FR20, FR21, FR22, NFR2
+**Objective:** Expand the single-Admin/unregistered-Candidate model into isolated Admin, Lecturer, and Student accounts without weakening the secure examination-link flow.
+**Tasks:**
+- Keep the Admin pre-provisioned with no registration route
+- Add Lecturer registration restricted to `@mau.edu.ng`, email verification, and Admin approval
+- Add Student registration restricted to `@student.mau.edu.ng` and email verification
+- Add Admin account oversight for approval, suspension, and restoration
+- Enforce server-side role checks for every protected portal route
+- Preserve examination OTP/magic-link verification and connect records by normalized Student email
+**Dependencies:** Phase 10
+**Deliverable:** Three isolated account roles with tested registration, verification, approval, login, and access controls.
+**Tools:** Flask-Login, Flask-WTF, Flask-Mail, Flask-Bcrypt, SQLAlchemy
+
+### Phase 12 — Lecturer Dashboard
+**Covers:** FR23
+**Objective:** Move day-to-day examination ownership from the Admin-only interface into an isolated Lecturer workspace while retaining Admin oversight.
+**Tasks:**
+- Lecturer-owned exam/question creation and editing
+- Lecturer-specific monitoring feed, grading queue, and results
+- Ownership checks preventing access to another Lecturer's data
+- Admin system-wide visibility without transferring ownership accidentally
+**Dependencies:** Phase 11
+**Deliverable:** An approved Lecturer can manage the complete lifecycle of only their own examinations.
+
+### Phase 13 — Student Dashboard
+**Covers:** FR24
+**Objective:** Give each verified Student a persistent view of attempts and released results.
+**Tasks:**
+- Show in-progress and completed attempts by normalized institutional email
+- Show pending/released result state and detailed released results
+- Integrate secure examination links with an authenticated Student identity
+- Prevent one Student from reading another Student's submissions or results
+**Dependencies:** Phase 11
+**Deliverable:** A verified Student can enter examinations securely and review only their own history and released results.
+
+### Phase 14 — Integration & System Testing
 **Covers:** NFR4, NFR5
 **Objective:** Verify the whole pipeline end-to-end and catch integration issues across Phases 3–10.
 **Tasks:**
@@ -223,11 +267,11 @@ gantt
 - Manual end-to-end test: full lifecycle from admin exam creation through candidate verification, exam-taking, violations, auto-submit/resume, grading, and release
 - Light load/performance smoke test simulating multiple concurrent candidates
 - Security review: token entropy, hashed storage, HTTPS-only cookies, SQL-injection safety via the ORM
-**Dependencies:** Phases 8 and 10 both complete
+**Dependencies:** Phases 12 and 13 both complete
 **Deliverable:** Passing test suite, a documented end-to-end test run, and a resolved (or logged) known-issues list.
 **Tools:** pytest, Postman
 
-### Phase 12 — Deployment (Production Infrastructure)
+### Phase 15 — Deployment (Production Infrastructure)
 **Covers:** NFR3, NFR5, NFR6
 **Objective:** Move the system from local development to production at mausoap.com.ng.
 **Tasks:**
@@ -237,15 +281,15 @@ gantt
 - Configure Nginx as a reverse proxy in front of Gunicorn
 - Obtain and configure a TLS certificate via Let's Encrypt/Certbot; enforce HTTPS
 - Set production environment variables/secrets (never committed to Git)
-- Set `CANDIDATE_EMAIL_DOMAIN=mau.edu.ng` before final production use; retain `gmail.com` only for development and controlled testing
+- Set `CANDIDATE_EMAIL_DOMAIN=student.mau.edu.ng` and `LECTURER_EMAIL_DOMAIN=mau.edu.ng`
 - Configure the production cron job for scheduled result release
 - Set up automated PostgreSQL backups
 - Point the mausoap.com.ng domain at the server
-**Dependencies:** Phase 11
+**Dependencies:** Phase 14
 **Deliverable:** A live, HTTPS-secured system accessible at mausoap.com.ng.
 **Tools:** Gunicorn, Nginx, Certbot, cron, `pg_dump`
 
-### Phase 13 — User Acceptance Testing & TAM Evaluation
+### Phase 16 — User Acceptance Testing & TAM Evaluation
 **Covers:** Proposal Objective iii (usability/effectiveness evaluation), Chapter Four (TAM survey)
 **Objective:** Validate the deployed system with real users per the study's methodology (purposive sample: 5 lecturers, 25 students).
 **Tasks:**
@@ -253,11 +297,11 @@ gantt
 - Run a pilot exam with real Admin and Candidate participants
 - Administer the TAM questionnaire (Perceived Usefulness / Perceived Ease of Use)
 - Collect and analyze feedback; log any usability issues or bugs found
-**Dependencies:** Phase 12
+**Dependencies:** Phase 15
 **Deliverable:** UAT results feeding into Chapter Four of the project report; critical fixes looped back into a patch release.
 **Tools:** Survey instrument (outside the software stack)
 
-### Phase 14 — Documentation & Handover
+### Phase 17 — Documentation & Handover
 **Covers:** NFR6
 **Objective:** Ensure the university can maintain and extend the system after project completion.
 **Tasks:**
@@ -266,7 +310,7 @@ gantt
 - Document the database schema (ERD + table reference)
 - Document a deployment runbook (redeploying, rotating secrets, restarting services)
 - Finalize the project report, referencing `Execution.md` and this document
-**Dependencies:** Phase 13
+**Dependencies:** Phase 16
 **Deliverable:** Complete documentation package handed over alongside the codebase.
 **Tools:** Markdown, Git repository README
 
@@ -276,6 +320,6 @@ gantt
 
 The proposal explicitly adopts an *Iterative* Waterfall model (Fig. 3.5), permitting
 movement back to an earlier phase when testing surfaces an issue. In practice this means,
-for example, a bug found in Phase 11 tracing back to the grading logic in Phase 9 should
-be fixed in Phase 9 and re-verified in Phase 11 — not patched over in testing. The phase
+for example, a bug found in Phase 14 tracing back to the grading logic in Phase 9 should
+be fixed in Phase 9 and re-verified in Phase 14 — not patched over in testing. The phase
 order above is the intended build sequence, not a one-way gate.

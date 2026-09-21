@@ -10,7 +10,7 @@ def test_landing_page(client):
 
     assert response.status_code == 200
     assert b"MAU-SOAP" in response.data
-    assert b"Phase 1 running" in response.data
+    assert b"Secure online assessment" in response.data
 
 
 def test_admin_area_requires_login(client):
@@ -53,4 +53,3 @@ def test_database_health_failure_returns_safe_response(client, monkeypatch):
     assert response.status_code == 503
     assert response.get_json() == {"database": "unavailable", "status": "error"}
     assert b"private driver detail" not in response.data
-

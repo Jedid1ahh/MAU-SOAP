@@ -1,50 +1,52 @@
 # MAU-SOAP
 
-MAU-SOAP is the Modibbo Adama University browser-based examination and
-supervision platform. This repository currently contains **Phase 1**: a clean,
-tested Flask application foundation with PostgreSQL connectivity.
+MAU-SOAP is the Modibbo Adama University browser-based secure online
+assessment and supervision platform. The application currently includes the
+verified functionality from Phases 1–10 plus the Phase 11 multi-role account
+foundation.
 
-## Phase 1 contents
+## Current capabilities
 
-- Flask application factory
-- Separate `main`, `admin`, `candidate`, and `api` blueprints
-- Environment-based configuration and secret handling
-- PostgreSQL development service through Docker Compose
-- Reusable Flask extensions, initialized without circular imports
-- Application and database health endpoints
-- Unit tests for configuration, routing, and database connectivity
-- Git-ready ignore rules and documented branch strategy
+- One pre-provisioned Admin account; no Admin registration
+- Lecturer registration with exact `@mau.edu.ng` validation, email
+  verification, and Admin approval
+- Student registration with exact `@student.mau.edu.ng` validation
+- Role-isolated Admin, Lecturer, and Student dashboards
+- Examination and question management
+- Secure examination links with OTP and magic-link verification
+- Server-authoritative timing, autosave/resume, supervision warnings, and
+  third-warning auto-submission
+- Automatic and manual grading
+- Immediate and scheduled result release, with ungraded open-ended results
+  withheld
+- Student examination history and protected result access
 
-Feature logic such as authentication, exam management, verification, exam
-sessions, and grading belongs to later phases and is deliberately absent.
+The existing examination-link flow remains operational while the Lecturer and
+Student dashboards are expanded in Phases 12 and 13.
 
 ## Project structure
 
 ```text
 MAU-SOAP/
 ├── app/
-│   ├── admin/          # Admin routes (features begin in Phase 3)
-│   ├── api/            # JSON endpoints and health checks
-│   ├── candidate/      # Candidate routes (features begin in Phase 5)
-│   ├── main/           # Public landing page
-│   ├── static/         # CSS and later browser-side assets
-│   ├── templates/      # Shared Jinja templates
-│   ├── __init__.py     # Application factory
-│   ├── config.py       # Environment-specific settings
-│   └── extensions.py   # Unbound Flask extensions
-├── docs/               # Phase-specific setup and testing instructions
-│   └── specifications/ # Approved Execution.md and Phases.md source of truth
-├── tests/              # Automated unit tests
-├── compose.yaml        # Local PostgreSQL 16 service
+│   ├── accounts/       # Lecturer/Student registration and login
+│   ├── admin/          # Admin authentication and system oversight
+│   ├── api/            # JSON health and session endpoints
+│   ├── candidate/      # Secure examination-link flow
+│   ├── lecturer/       # Lecturer portal
+│   ├── student/        # Student portal and result access
+│   ├── models/         # SQLAlchemy models
+│   ├── static/         # CSS, JavaScript, and MediaPipe assets
+│   └── templates/      # Shared Jinja templates
+├── docs/specifications/# Requirements and phase roadmap
+├── migrations/         # Alembic database migrations
+├── tests/              # Automated tests
 ├── requirements.txt    # Runtime dependencies
-├── requirements-dev.txt# Testing/development dependencies
+├── requirements-dev.txt# Development dependencies
 └── wsgi.py             # Flask/Gunicorn entry point
 ```
 
 ## Quick start
-
-Detailed Windows, macOS, and Linux instructions are in
-[`docs/PHASE_1_TESTING.md`](docs/PHASE_1_TESTING.md).
 
 ```bash
 python -m venv .venv
@@ -52,26 +54,30 @@ source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -r requirements-dev.txt
 cp .env.example .env
-docker compose up -d db
-flask run
+python -m flask db upgrade
+python -m flask seed-db
+python -m flask run
 ```
 
-Open <http://127.0.0.1:5000> and verify the database at
-<http://127.0.0.1:5000/api/v1/health/database>.
+On Git Bash for Windows, activate with `source .venv/Scripts/activate`.
 
-Run all Phase 1 checks with:
+The default `.env.example` database URL targets local XAMPP/MariaDB. Replace
+all placeholder secrets in the private `.env` before running the system.
+
+## Verification
 
 ```bash
-pytest
-ruff check .
+python -m pytest
+python -m ruff check .
+python -m flask db check
+git diff --check
 ```
 
 ## Branch strategy
 
 - `main` contains verified phase milestones.
-- `develop` is the integration branch for the next phase.
-- `feature/<short-name>` branches contain focused changes and merge into
-  `develop` after their tests pass.
+- `develop` is available for integration work.
+- `feature/<short-name>` branches contain focused changes.
 
-No secret, `.env` file, virtual environment, database volume, or generated test
-artifact should be committed.
+Never commit `.env`, `.venv`, database data, supervision evidence, `.agents`,
+`.codex`, or `skills-lock.json`.

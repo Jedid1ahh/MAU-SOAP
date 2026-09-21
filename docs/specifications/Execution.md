@@ -19,8 +19,9 @@ original proposal document, this supersedes it.
 
 | Actor | Description |
 |---|---|
-| **Admin** | The single default, pre-provisioned system administrator who logs in with configured credentials, creates and manages examinations, configures supervision, reviews submissions, grades flagged responses, and controls result release. The system provides no public Admin registration. |
-| **Candidate** | Unregistered user who accesses a single examination via a unique link, verifies identity by an allowed-domain email address (OTP + magic link), and takes the exam under supervision. During development and testing the allowed domain is `@gmail.com`; it will be changed to `@mau.edu.ng` before final production use. |
+| **Admin** | The single default, pre-provisioned system administrator. The Admin approves Lecturer accounts, manages institutional access, and retains system-wide oversight. The system provides no public Admin registration. |
+| **Lecturer** | A registered MAU staff member using an `@mau.edu.ng` address. Access begins only after email verification and Admin approval. A Lecturer manages only examinations, submissions, grading, warnings, and results within their ownership scope. |
+| **Student** | A registered user with an `@student.mau.edu.ng` address and a persistent dashboard. The existing secure examination-link, OTP/magic-link, supervision, submission, and result flow remains available and is connected to the Student by normalized institutional email. |
 
 ---
 
@@ -29,11 +30,11 @@ original proposal document, this supersedes it.
 | ID | Requirement | Description | Tools / Libraries |
 |---|---|---|---|
 | FR1 | Default Admin Provisioning | The system shall contain one default Admin account created during database initialization from securely configured credentials. No Admin registration route, form, or public account-creation workflow shall exist. | Flask-Bcrypt (password hashing), SQLAlchemy + PostgreSQL, environment variables/seed command |
-| FR2 | Admin and Candidate Access Model | The pre-provisioned Admin uses a password-protected account and Flask session. Candidates require no account and access only a specific examination after email verification (see FR6). | Flask-Login (Admin sessions), SQLAlchemy |
+| FR2 | Role-Based Access Model | Admin, Lecturer, and Student accounts use password-protected Flask sessions with server-side role checks. The Admin remains pre-provisioned and has no registration route. | Flask-Login, SQLAlchemy |
 | FR3 | Exam Creation | An Admin shall be able to create examinations containing multiple-choice, open-ended, and short-answer questions. | Flask, Jinja2 (admin forms/UI), SQLAlchemy + PostgreSQL |
 | FR4 | Supervision Configuration | An Admin shall be able to configure, per examination, the time limit and webcam monitoring type (face or eye/gaze). The maximum warning count is a fixed system rule of 3 warnings. | Flask, SQLAlchemy (exam configuration columns) |
 | FR5 | Exam Link Generation | The system shall generate a unique, cryptographically random shareable URL (≥128 bits entropy) for each examination, never exposing a sequential database identifier. | Python `secrets` module (CSPRNG token), SQLAlchemy (unique indexed column) |
-| FR6 | Candidate Verification | A Candidate shall verify their identity by entering their name and an email address in the configured allowed domain, after which the system sends a one-time password (OTP) and a magic link to that email. The allowed domain shall be configurable through an environment variable: `@gmail.com` during development/testing and `@mau.edu.ng` before final production use. The Candidate gains exam access via either verification path, without a registered account. | Python `secrets` module (OTP + token generation), `hashlib`/`passlib` (token hashing before storage), Flask-Mail (SMTP delivery), environment-based configuration |
+| FR6 | Student Examination Verification | A Student entering through a secure examination link shall verify the exact `@student.mau.edu.ng` address through an OTP or magic link. The existing passwordless examination session remains available and is associated with the Student dashboard by normalized email. | Python `secrets`, keyed hashing, Flask-Mail, environment-based configuration |
 | FR7 | Copy-Paste Mitigation | The system shall prevent Candidates from copying examination text via keyboard shortcuts or right-click context menus during an active session. | Native browser Clipboard API, `keydown`/`contextmenu` event listeners (vanilla JS — no external library) |
 | FR8 | Screenshot Detection | The system shall detect and log likely screenshot attempts (screen-capture keyboard shortcuts, window/tab focus loss) during an active session and issue a warning upon detection. Full OS-level prevention is not technically achievable in a browser context and is not claimed. | Native browser Page Visibility API, `keydown`/`blur` event listeners (vanilla JS — no external library) |
 | FR9 | Webcam Monitoring | The system shall activate client-side webcam monitoring upon commencement of an examination. When a facial-presence or gaze-deviation violation is detected (per the configured monitor type), the system shall (a) warn the Candidate, (b) log the violation, and (c) alert the responsible Admin in near-real-time on the Admin dashboard. | MediaPipe Face Landmarker (MediaPipe Tasks Vision, JavaScript, client-side, WASM/WebGL), browser MediaDevices API (webcam access); AJAX polling (`fetch`) against a Flask endpoint for Admin-side alerts — see §4.4.1 |
@@ -47,6 +48,11 @@ original proposal document, this supersedes it.
 | FR17 | Autosave & Resume | The system shall periodically persist a Candidate's in-progress responses during an active session and shall allow the Candidate to resume an interrupted session (e.g. after a disconnect or crash) without repeating email verification. | Vanilla JS (`fetch`, debounced interval), Flask endpoint, SQLAlchemy (JSONB `responses` column), browser `localStorage` (resume token) |
 | FR18 | Server-Authoritative Timing | The system shall compute and enforce examination time limits server-side, based on a server-recorded start time, independent of any time value reported by the Candidate's browser. | Python `datetime` (server clock), Flask (elapsed-time calculation on every request) |
 | FR19 | Duplicate Submission Prevention | The system shall permit at most one submission per Candidate per examination and shall reject any further response changes once a submission has been finalized. | PostgreSQL UNIQUE constraint (via SQLAlchemy), Flask enforcement logic |
+| FR20 | Lecturer Registration and Approval | A Lecturer shall self-register only with the configured `@mau.edu.ng` domain, verify the address, and remain unable to access the Lecturer portal until approved by the Admin. | Flask-WTF, Flask-Mail, Flask-Bcrypt, Flask-Login |
+| FR21 | Student Registration | A Student shall self-register only with the configured `@student.mau.edu.ng` domain and verify the address before dashboard access. | Flask-WTF, Flask-Mail, Flask-Bcrypt, Flask-Login |
+| FR22 | Account Administration | The Admin shall list, approve, suspend, and restore non-Admin institutional accounts. Admin registration shall remain unavailable. | Flask, SQLAlchemy, role decorators |
+| FR23 | Lecturer Dashboard | An approved Lecturer shall receive an isolated dashboard for Lecturer-owned examinations and the related monitoring, grading, and result workflows. | Flask, Jinja2, SQLAlchemy |
+| FR24 | Student Dashboard | A verified Student shall see examination attempts, submission state, and only that Student's released results. | Flask, Jinja2, SQLAlchemy |
 
 ---
 
@@ -55,7 +61,7 @@ original proposal document, this supersedes it.
 | ID | Category | Requirement | Tools / Libraries |
 |---|---|---|---|
 | NFR1 | Accessibility | The system shall be accessible via standard web browsers on desktop, laptop, and mobile devices without requiring installation of additional software. | HTML5, CSS3 (responsive layout) |
-| NFR2 | Access Control | Admin access shall be limited to the pre-provisioned default Admin account; no public Admin registration endpoint shall exist. Candidate access shall be restricted to the configured allowed email domain (`gmail.com` during development/testing; `mau.edu.ng` for final production use). | Flask-Login, Python email-domain validation logic, environment-based configuration |
+| NFR2 | Access Control | Admin access is limited to the pre-provisioned account; Lecturer access requires exact-domain email verification plus Admin approval; Student registration and examination verification require the exact `student.mau.edu.ng` domain; every protected route enforces its role server-side. | Flask-Login, role decorators, exact-domain validation, environment-based configuration |
 | NFR3 | Availability | The system shall remain available and responsive throughout the duration of any scheduled examination. | Gunicorn (production WSGI server), Nginx (reverse proxy), Let's Encrypt/Certbot (HTTPS/TLS) |
 | NFR4 | Data Integrity | All examination data, candidate responses, warning logs, and results shall be stored securely with appropriate constraints and access controls. | PostgreSQL (ACID compliance), SQLAlchemy (FK/UNIQUE/NOT NULL constraints), `pg_dump` (backups) |
 | NFR5 | Performance | The system shall respond to user inputs within an acceptable time frame for a smooth, uninterrupted examination experience. | Gunicorn (multi-worker), PostgreSQL indexing on high-traffic columns (`exam_link_token`, `candidate_email`) |
@@ -72,10 +78,18 @@ original proposal document, this supersedes it.
 - No Admin registration page, route, API endpoint, or self-service account-creation workflow exists.
 - Log in / log out (FR15).
 - Request password reset: emailed time-limited single-use link (Python `secrets` + Flask-Mail); setting a new password invalidates the reset token (FR13).
+- List registered Lecturer and Student accounts; approve verified Lecturers and suspend or restore non-Admin accounts (FR22).
+
+### 4.1.1 Lecturer and Student Accounts
+- Lecturer registration accepts only the exact domain configured by `LECTURER_EMAIL_DOMAIN` (`mau.edu.ng` by default).
+- Student registration accepts only the exact domain configured by `CANDIDATE_EMAIL_DOMAIN` (`student.mau.edu.ng`).
+- Account-verification links are random, hashed at rest, expiring, and single use.
+- Email verification automatically activates the Student approval gate; a Lecturer remains pending until the Admin explicitly approves the account.
+- Role checks are performed on the server for every Admin, Lecturer, and Student portal route.
 
 ### 4.2 Candidate Verification
-- Candidate enters name + email at the exam link.
-- The system validates the address against `CANDIDATE_EMAIL_DOMAIN`, configured as `gmail.com` during development/testing and changed to `mau.edu.ng` before final production use.
+- Student enters name + email at the exam link.
+- The system validates the address against `CANDIDATE_EMAIL_DOMAIN`, configured as `student.mau.edu.ng`.
 - The system generates a 6-digit OTP and a magic-link token (both hashed before storage via `secrets` + `hashlib`/`passlib`, both expiring after a short window), and sends them via Flask-Mail.
 - Candidate verifies via either the OTP or the magic link.
 - On success, the system creates (or resumes, per §4.5) the Candidate's submission record and issues a session/resume token — a second CSPRNG token distinct from the OTP — that authenticates the rest of the exam session so the Candidate is never asked to re-verify by email mid-session.

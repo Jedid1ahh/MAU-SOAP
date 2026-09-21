@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Lecturer dashboard | MAU-SOAP{% endblock %}
+
+{% block content %}
+  <section class="dashboard-shell">
+    <div class="page-heading">
+      <div>
+        <span class="eyebrow">Approved Lecturer account</span>
+        <h1>Lecturer dashboard</h1>
+        <p>Welcome, <strong>{{ current_user.full_name }}</strong>.</p>
+      </div>
+    </div>
+
+    {% if exams %}
+      <div class="exam-grid">
+        {% for exam in exams %}
+          <article class="card exam-card">
+            <div class="card-heading">
+              <span class="status-badge">
+                {{ "Locked" if exam.is_locked else "Editable" }}
+              </span>
+              <span class="muted-text">{{ exam.questions|length }} question(s)</span>
+            </div>
+            <h2>{{ exam.title }}</h2>
+            <p><strong>{{ exam.course_code }}</strong> — {{ exam.course_title }}</p>
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <section class="card empty-state">
+        <h2>No examinations yet</h2>
+        <p>
+          Your account is ready. Lecturer examination-management tools are the
+          next implementation step.
+        </p>
+      </section>
+    {% endif %}
+  </section>
+{% endblock %}
