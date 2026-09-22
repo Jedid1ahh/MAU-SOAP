@@ -7,7 +7,7 @@
 {% block content %}
   <section class="auth-layout">
     <aside class="auth-spotlight">
-      <span class="eyebrow eyebrow-light">{{ role.value|title }} access</span>
+      <div class="auth-role-marker">{{ role.value|title }}</div>
       <h1>
         {% if role.value == "lecturer" %}
           Build and manage secure course assessments.
@@ -27,8 +27,7 @@
     </aside>
 
     <section class="card auth-card">
-      <span class="eyebrow">{{ role.value|title }} registration</span>
-      <h2>Create your account</h2>
+      <h2>Create your {{ role.value|title }} account</h2>
       <p class="auth-lead">
       {% if role.value == "lecturer" %}
         Use your official MAU staff email. Access begins after email

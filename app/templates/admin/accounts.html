@@ -6,7 +6,6 @@
   <section class="dashboard-shell">
     <div class="page-heading">
       <div>
-        <span class="eyebrow">Role and access control</span>
         <h1>Lecturer and Student accounts</h1>
         <p>Approve verified Lecturers and manage institutional access.</p>
       </div>
@@ -21,7 +20,7 @@
           <article class="card account-card">
             <div class="card-heading">
               <div>
-                <span class="eyebrow">{{ user.role.value|title }}</span>
+                <span class="status-badge">{{ user.role.value|title }}</span>
                 <h2>{{ user.full_name }}</h2>
               </div>
               {% if not user.is_active %}

@@ -7,23 +7,22 @@
 {% block content %}
   <section class="auth-layout">
     <aside class="auth-spotlight">
-      <span class="eyebrow eyebrow-light">One secure sign-in</span>
-      <h2>Welcome back to your assessment workspace.</h2>
-      <p>
-        Your credentials identify your role automatically and take you directly
-        to the correct Admin, Lecturer, or Student dashboard.
-      </p>
-      <ul class="auth-benefits">
-        <li>Secure institutional access</li>
-        <li>Role-aware dashboard routing</li>
-        <li>Course-centered examination records</li>
-      </ul>
+      <img
+        src="https://images.pexels.com/photos/7742816/pexels-photo-7742816.jpeg?auto=compress&amp;cs=tinysrgb&amp;w=1200"
+        alt="Students completing computer-based learning activities in a classroom"
+        width="900"
+        height="900"
+      >
+      <div class="auth-spotlight-copy">
+        <h2>One secure sign-in.</h2>
+        <p>Your credentials identify your role and open the correct workspace.</p>
+        <span>Admin · Lecturer · Student</span>
+      </div>
     </aside>
 
     <section class="card auth-card">
-      <span class="eyebrow">Institutional access</span>
       <h1>Login</h1>
-      <p class="auth-lead">Enter the credentials for your MAU-SOAP account.</p>
+      <p class="auth-lead">Use your institutional MAU-SOAP credentials.</p>
 
       <form method="post" novalidate>
         {{ form.hidden_tag() }}
@@ -52,7 +51,7 @@
       </form>
 
       <div class="auth-options">
-        <span>New to MAU-SOAP?</span>
+        <strong>New to MAU-SOAP?</strong>
         <div class="auth-links">
           <a href="{{ url_for('accounts.register_student') }}">
             Create Student account
@@ -64,6 +63,7 @@
         <a class="muted-link" href="{{ url_for('admin.request_password_reset') }}">
           Forgot Admin password?
         </a>
+        <small class="photo-credit">Photo: Alena Darmel / Pexels</small>
       </div>
     </section>
   </section>

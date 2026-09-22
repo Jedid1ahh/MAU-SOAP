@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#0b2f55">
+    <meta name="theme-color" content="#08264a">
     <meta
       name="description"
       content="MAU-SOAP secure online assessment and course management portal."
@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
-      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     >
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
@@ -21,12 +21,19 @@
     <a class="skip-link" href="#main-content">Skip to main content</a>
 
     <header class="site-header">
+      <div class="university-bar">
+        <div>
+          <span>Modibbo Adama University, Yola</span>
+          <span class="university-bar-separator" aria-hidden="true"></span>
+          <span>Secure Online Assessment Portal</span>
+        </div>
+      </div>
       <div class="header-inner">
         <a class="brand" href="{{ url_for('main.index') }}" aria-label="MAU-SOAP home">
-          <span class="brand-mark" aria-hidden="true">M</span>
+          <span class="brand-mark" aria-hidden="true">MAU</span>
           <span class="brand-copy">
             <strong>MAU-SOAP</strong>
-            <small>Secure assessment portal</small>
+            <small>Assessment by course</small>
           </span>
         </a>
 
@@ -91,8 +98,8 @@
 
     <footer class="site-footer">
       <div class="footer-inner">
-        <p><strong>MAU-SOAP</strong> · Modibbo Adama University</p>
-        <p>Secure access for Administrators, Lecturers, and Students.</p>
+        <p><strong>MAU-SOAP</strong> · Modibbo Adama University, Yola</p>
+        <p>Course · Examination · Grade · Result</p>
       </div>
     </footer>
   </body>
