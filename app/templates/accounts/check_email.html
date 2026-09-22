@@ -2,17 +2,21 @@
 
 {% block title %}Check your email | MAU-SOAP{% endblock %}
 
+{% block body_class %}auth-page{% endblock %}
+
 {% block content %}
-  <section class="card auth-card">
+  <section class="card auth-card confirmation-card">
+    <span class="confirmation-mark" aria-hidden="true"></span>
     <span class="status-badge">Registration received</span>
     <h1>Check your institutional email</h1>
-    <p>
+    <p class="auth-lead">
       We sent a secure verification link{% if email %} to
       <strong>{{ email }}</strong>{% endif %}. Open it before it expires.
     </p>
-    <p>
-      Lecturer accounts also require Admin approval after email verification.
-    </p>
+    <div class="notice-panel">
+      <strong>Registering as a Lecturer?</strong>
+      <p>Your account also requires Admin approval after email verification.</p>
+    </div>
     <a class="secondary-button" href="{{ url_for('accounts.login') }}">
       Return to login
     </a>

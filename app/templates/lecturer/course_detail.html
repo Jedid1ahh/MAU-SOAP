@@ -15,6 +15,24 @@
       </a>
     </div>
 
+    <section class="summary-grid" aria-label="Course overview">
+      <article class="summary-card summary-card-success">
+        <span>Enrolled Students</span>
+        <strong>{{ accepted_enrollments|length }}</strong>
+        <small>Active course members</small>
+      </article>
+      <article class="summary-card summary-card-warning">
+        <span>Pending invitations</span>
+        <strong>{{ pending_enrollments|length }}</strong>
+        <small>Awaiting acceptance</small>
+      </article>
+      <article class="summary-card">
+        <span>Examinations</span>
+        <strong>{{ course.exams|length }}</strong>
+        <small>Course assessments</small>
+      </article>
+    </section>
+
     <div class="detail-grid">
       <section class="card">
         <div class="card-heading">

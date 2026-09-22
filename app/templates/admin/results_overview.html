@@ -19,7 +19,7 @@
       <div class="exam-grid">
         {% for submission in submissions %}
           {% set result = submission.result %}
-          <article class="card exam-card">
+          <article class="card exam-card result-card">
             <div class="card-heading">
               {% if result.is_released %}
                 <span class="status-badge">Released</span>

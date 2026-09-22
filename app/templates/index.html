@@ -2,23 +2,94 @@
 
 {% block title %}MAU-SOAP | Secure Online Assessment{% endblock %}
 
+{% block body_class %}landing-page{% endblock %}
+
 {% block content %}
-  <section class="card">
-    <span class="status-badge">Secure online assessment</span>
-    <h1>MAU-SOAP</h1>
-    <p>
-      Sign in once and MAU-SOAP will open the dashboard for your account role.
-    </p>
-    <div class="portal-actions">
-      <a class="primary-button button-auto" href="{{ url_for('accounts.login') }}">
-        Login
-      </a>
-      <a class="secondary-button" href="{{ url_for('accounts.register_student') }}">
-        Student registration
-      </a>
-      <a class="secondary-button" href="{{ url_for('accounts.register_lecturer') }}">
-        Lecturer registration
-      </a>
-    </div>
-  </section>
+  <div class="landing-shell">
+    <section class="landing-hero" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <span class="status-badge">Secure online assessment</span>
+        <p class="hero-kicker">Modibbo Adama University</p>
+        <h1 id="hero-title">One trusted workspace for every examination.</h1>
+        <p class="hero-summary">
+          Sign in once and MAU-SOAP opens the right dashboard for your role—
+          keeping courses, examinations, supervision, grading, and results
+          organized in one secure place.
+        </p>
+
+        <div class="portal-actions">
+          <a class="primary-button button-auto" href="{{ url_for('accounts.login') }}">
+            Login to MAU-SOAP
+          </a>
+          <a class="secondary-button" href="{{ url_for('accounts.register_student') }}">
+            Student registration
+          </a>
+          <a class="secondary-button" href="{{ url_for('accounts.register_lecturer') }}">
+            Lecturer registration
+          </a>
+        </div>
+
+        <ul class="trust-list" aria-label="Platform assurances">
+          <li>Institutional accounts</li>
+          <li>Role-based access</li>
+          <li>Supervised examinations</li>
+        </ul>
+      </div>
+
+      <div class="hero-console" aria-label="MAU-SOAP platform overview">
+        <div class="console-header">
+          <span class="console-dot"></span>
+          <span>Assessment workspace</span>
+          <span class="status-badge status-live">Protected</span>
+        </div>
+        <div class="console-course">
+          <span class="course-code">CIE 111</span>
+          <div>
+            <strong>Introduction to Computing</strong>
+            <span>Course examination workspace</span>
+          </div>
+        </div>
+        <div class="console-grid">
+          <div>
+            <span>Examination</span>
+            <strong>Ready</strong>
+          </div>
+          <div>
+            <span>Supervision</span>
+            <strong>Live</strong>
+          </div>
+          <div>
+            <span>Autosave</span>
+            <strong>Active</strong>
+          </div>
+          <div>
+            <span>Results</span>
+            <strong>Controlled</strong>
+          </div>
+        </div>
+        <div class="console-progress" aria-hidden="true">
+          <span></span>
+        </div>
+        <p>Purpose-built for a clear, focused assessment experience.</p>
+      </div>
+    </section>
+
+    <section class="feature-grid" aria-label="MAU-SOAP role overview">
+      <article class="feature-card">
+        <span class="feature-number">01</span>
+        <h2>Admin control</h2>
+        <p>Create courses, approve accounts, and assign one Lecturer to each course.</p>
+      </article>
+      <article class="feature-card">
+        <span class="feature-number">02</span>
+        <h2>Lecturer workspace</h2>
+        <p>Invite Students and manage examinations, supervision, grading, and results.</p>
+      </article>
+      <article class="feature-card">
+        <span class="feature-number">03</span>
+        <h2>Student experience</h2>
+        <p>Accept course invitations and complete every assessment from one dashboard.</p>
+      </article>
+    </section>
+  </div>
 {% endblock %}

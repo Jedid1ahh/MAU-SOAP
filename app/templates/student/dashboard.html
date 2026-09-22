@@ -12,6 +12,19 @@
       </div>
     </div>
 
+    <section class="summary-grid" aria-label="Student workspace overview">
+      <article class="summary-card summary-card-success">
+        <span>My courses</span>
+        <strong>{{ accepted_enrollments|length }}</strong>
+        <small>Accepted enrollments</small>
+      </article>
+      <article class="summary-card summary-card-warning">
+        <span>Invitations</span>
+        <strong>{{ pending_enrollments|length }}</strong>
+        <small>Waiting for your response</small>
+      </article>
+    </section>
+
     {% if pending_enrollments %}
       <section class="card questions-card">
         <div class="card-heading">
@@ -25,7 +38,7 @@
         </div>
         <div class="exam-grid">
           {% for enrollment in pending_enrollments %}
-            <article class="card exam-card">
+            <article class="card exam-card invitation-card">
               <span class="status-badge">{{ enrollment.course.code }}</span>
               <h3>{{ enrollment.course.title }}</h3>
               {% if enrollment.invited_by %}
@@ -62,7 +75,7 @@
             <div class="exam-grid">
               {% for exam in enrollment.course.exams %}
                 {% set submission = submissions_by_exam.get(exam.id) %}
-                <article class="card exam-card">
+                <article class="card exam-card assessment-card">
                   <div class="card-heading">
                     {% if submission and not submission.is_finalized %}
                       <span class="status-badge status-pending">In progress</span>
@@ -75,7 +88,9 @@
                     {% endif %}
                   </div>
                   <h3>{{ exam.title }}</h3>
-                  <p>{{ exam.time_limit_minutes }} minutes</p>
+                  <p class="assessment-duration">
+                    <strong>{{ exam.time_limit_minutes }}</strong> minutes
+                  </p>
                   {% if submission and submission.is_finalized %}
                     <a
                       class="secondary-button"

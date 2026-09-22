@@ -24,10 +24,28 @@
       </div>
     </div>
 
+    <section class="summary-grid" aria-label="Administration overview">
+      <article class="summary-card">
+        <span>Total courses</span>
+        <strong>{{ courses|length }}</strong>
+        <small>Created workspaces</small>
+      </article>
+      <article class="summary-card summary-card-success">
+        <span>Assigned</span>
+        <strong>{{ courses|selectattr('lecturer')|list|length }}</strong>
+        <small>Courses with a Lecturer</small>
+      </article>
+      <article class="summary-card summary-card-warning">
+        <span>Needs assignment</span>
+        <strong>{{ courses|rejectattr('lecturer')|list|length }}</strong>
+        <small>Unassigned courses</small>
+      </article>
+    </section>
+
     {% if courses %}
       <div class="exam-grid">
         {% for course in courses %}
-          <article class="card exam-card">
+          <article class="card exam-card course-card">
             <div class="card-heading">
               <span class="status-badge {{ 'status-pending' if not course.lecturer else '' }}">
                 {{ "Assigned" if course.lecturer else "Unassigned" }}

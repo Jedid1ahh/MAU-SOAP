@@ -3,6 +3,13 @@
 {% block title %}Lecturer dashboard | MAU-SOAP{% endblock %}
 
 {% block content %}
+  {% set stats = namespace(exams=0, students=0, invitations=0) %}
+  {% for course in courses %}
+    {% set stats.exams = stats.exams + course.exams|length %}
+    {% set stats.students = stats.students + (course.enrollments|selectattr('is_accepted')|list|length) %}
+    {% set stats.invitations = stats.invitations + (course.enrollments|rejectattr('is_accepted')|list|length) %}
+  {% endfor %}
+
   <section class="dashboard-shell">
     <div class="page-heading">
       <div>
@@ -20,12 +27,35 @@
       </div>
     </div>
 
+    <section class="summary-grid" aria-label="Lecturer workspace overview">
+      <article class="summary-card">
+        <span>Assigned courses</span>
+        <strong>{{ courses|length }}</strong>
+        <small>Your active workspaces</small>
+      </article>
+      <article class="summary-card summary-card-success">
+        <span>Enrolled Students</span>
+        <strong>{{ stats.students }}</strong>
+        <small>Across your courses</small>
+      </article>
+      <article class="summary-card">
+        <span>Examinations</span>
+        <strong>{{ stats.exams }}</strong>
+        <small>Created assessments</small>
+      </article>
+      <article class="summary-card summary-card-warning">
+        <span>Invitations</span>
+        <strong>{{ stats.invitations }}</strong>
+        <small>Awaiting acceptance</small>
+      </article>
+    </section>
+
     {% if courses %}
       <div class="exam-grid">
         {% for course in courses %}
           {% set accepted_count = course.enrollments|selectattr('is_accepted')|list|length %}
           {% set pending_count = course.enrollments|rejectattr('is_accepted')|list|length %}
-          <article class="card exam-card">
+          <article class="card exam-card course-card">
             <div class="card-heading">
               <span class="status-badge">{{ course.code }}</span>
               <span class="muted-text">{{ course.exams|length }} examination(s)</span>
