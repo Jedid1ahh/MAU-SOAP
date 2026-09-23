@@ -2,23 +2,79 @@
 
 {% block title %}MAU-SOAP | Secure Online Assessment{% endblock %}
 
+{% block body_class %}landing-page{% endblock %}
+
 {% block content %}
-  <section class="card">
-    <span class="status-badge">Secure online assessment</span>
-    <h1>MAU-SOAP</h1>
-    <p>
-      Sign in once and MAU-SOAP will open the dashboard for your account role.
-    </p>
-    <div class="portal-actions">
-      <a class="primary-button button-auto" href="{{ url_for('accounts.login') }}">
-        Login
-      </a>
-      <a class="secondary-button" href="{{ url_for('accounts.register_student') }}">
-        Student registration
-      </a>
-      <a class="secondary-button" href="{{ url_for('accounts.register_lecturer') }}">
-        Lecturer registration
-      </a>
-    </div>
-  </section>
+  <div class="landing-shell">
+    <section class="landing-hero" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <h1 id="hero-title">Assessment, organized by course.</h1>
+        <p class="hero-summary">
+          Secure online assessment organized around course enrollment,
+          examinations, supervision, grading, and results. Sign in once and
+          MAU-SOAP takes you to the right place for your role.
+        </p>
+
+        <div class="portal-actions">
+          <a class="primary-button button-auto" href="{{ url_for('accounts.login') }}">
+            Login to MAU-SOAP
+          </a>
+          <a class="text-action" href="{{ url_for('accounts.register_student') }}">
+            Student registration
+          </a>
+          <a class="text-action" href="{{ url_for('accounts.register_lecturer') }}">
+            Lecturer registration
+          </a>
+        </div>
+
+        <div class="role-index" aria-label="MAU-SOAP roles">
+          <span><strong>Admin</strong> Courses and access</span>
+          <span><strong>Lecturer</strong> Assess and grade</span>
+          <span><strong>Student</strong> Enroll and complete</span>
+        </div>
+      </div>
+
+      <ol class="journey-rail" aria-label="Assessment journey">
+        <li><strong>Course</strong><span>Accept enrollment</span></li>
+        <li><strong>Exam</strong><span>Complete securely</span></li>
+        <li><strong>Grade</strong><span>Lecturer review</span></li>
+        <li><strong>Result</strong><span>Controlled release</span></li>
+      </ol>
+
+      <figure class="hero-photo">
+        <img
+          src="https://images.pexels.com/photos/6146978/pexels-photo-6146978.jpeg?auto=compress&amp;cs=tinysrgb&amp;w=1600"
+          alt="University students working together with a laptop on campus"
+          width="1200"
+          height="800"
+          fetchpriority="high"
+        >
+        <figcaption>
+          <span>One academic community</span>
+          <a href="https://www.pexels.com/photo/cheerful-multiethnic-students-with-books-sitting-near-university-6146978/">
+            Photo: Keira Burton / Pexels
+          </a>
+        </figcaption>
+      </figure>
+    </section>
+
+    <section class="role-pathways" aria-labelledby="role-pathways-title">
+      <header class="section-heading">
+        <h2 id="role-pathways-title">Built around the people who run every assessment.</h2>
+        <p>Clear responsibilities. Shared course context. One dependable record.</p>
+      </header>
+      <article>
+        <h3>Administrators</h3>
+        <p>Create courses, approve accounts, and assign one Lecturer to each course.</p>
+      </article>
+      <article>
+        <h3>Lecturers</h3>
+        <p>Invite Students and manage examinations, supervision, grading, and results.</p>
+      </article>
+      <article>
+        <h3>Students</h3>
+        <p>Accept course invitations and complete every assessment from one dashboard.</p>
+      </article>
+    </section>
+  </div>
 {% endblock %}

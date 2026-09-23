@@ -1,0 +1,134 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-22T00:00:00Z",
+  "title": "Design System: MAU-SOAP",
+  "extensions": {
+    "colorMeta": {
+      "university-navy": {
+        "role": "primary",
+        "displayName": "University Navy",
+        "canonical": "#08264a",
+        "tonalRamp": ["#03101f", "#041a33", "#08264a", "#174b7c", "#3d6f9e", "#7fa0bf", "#bfd0df", "#eef4f8"]
+      },
+      "deep-navy": {
+        "role": "primary",
+        "displayName": "Deep Navy",
+        "canonical": "#041a33",
+        "tonalRamp": ["#020b14", "#031222", "#041a33", "#103f6b", "#37658f", "#7897b5", "#bacbd9", "#edf3f7"]
+      },
+      "mau-gold": {
+        "role": "secondary",
+        "displayName": "MAU Gold",
+        "canonical": "#f3b61f",
+        "tonalRamp": ["#2a1c00", "#533700", "#785300", "#a97800", "#d99d00", "#f3b61f", "#ffd978", "#fff4cc"]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Paper",
+        "canonical": "#ffffff",
+        "tonalRamp": ["#17191b", "#303438", "#4b5055", "#6d7379", "#949aa0", "#bdc2c7", "#e3e6e8", "#ffffff"]
+      },
+      "campus-mist": {
+        "role": "neutral",
+        "displayName": "Campus Mist",
+        "canonical": "#edf1f4",
+        "tonalRamp": ["#15191c", "#2c343a", "#465159", "#67747d", "#8d99a2", "#b7c0c7", "#dbe1e5", "#edf1f4"]
+      }
+    },
+    "typographyMeta": {
+      "display": {"displayName": "Public Display", "purpose": "Landing statement only."},
+      "headline": {"displayName": "Destination Headline", "purpose": "Page and task titles."},
+      "body": {"displayName": "Academic Body", "purpose": "Instructions, records, and supporting copy."},
+      "label": {"displayName": "Wayfinding Label", "purpose": "Course codes, status, and metadata."}
+    },
+    "shadows": [
+      {"name": "ambient-low", "value": "0 8px 24px rgb(4 26 51 / 7%)", "purpose": "Authentication frame only."},
+      {"name": "hover-low", "value": "0 5px 16px rgb(4 26 51 / 6%)", "purpose": "Subtle feedback on actionable cards."}
+    ],
+    "motion": [
+      {"name": "state-fast", "value": "160ms ease", "purpose": "Color and border state transitions; disabled under reduced motion."}
+    ],
+    "breakpoints": [
+      {"name": "compact", "value": "672px"},
+      {"name": "stacked", "value": "896px"},
+      {"name": "wide", "value": "1120px"}
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The decisive action for a task or destination.",
+      "html": "<button class=\"ds-btn-primary\">Open course</button>",
+      "css": ".ds-btn-primary{background:var(--color-primary);border:1px solid var(--color-primary);border-radius:3px;color:#fff;font:700 14px Archivo,Arial,sans-serif;min-height:46px;padding:12px 18px}.ds-btn-primary:hover{background:var(--color-primary-strong);border-color:var(--color-primary-strong)}.ds-btn-primary:focus-visible{outline:3px solid #d28c00;outline-offset:3px}"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "A bordered action for supporting navigation and management.",
+      "html": "<button class=\"ds-btn-secondary\">Manage examination</button>",
+      "css": ".ds-btn-secondary{background:#fff;border:1px solid #9dabb9;border-radius:3px;color:#08264a;font:700 14px Archivo,Arial,sans-serif;min-height:46px;padding:12px 18px}.ds-btn-secondary:hover{background:#e8eef4;border-color:#08264a}.ds-btn-secondary:focus-visible{outline:3px solid #d28c00;outline-offset:3px}"
+    },
+    {
+      "name": "Course Marker",
+      "kind": "chip",
+      "refersTo": "course-marker",
+      "description": "A compact academic locator for course context.",
+      "html": "<span class=\"ds-course-marker\">CIE 111</span>",
+      "css": ".ds-course-marker{background:#f3b61f;border-radius:3px;color:#041a33;display:inline-block;font:800 11px Archivo,Arial,sans-serif;letter-spacing:.075em;padding:6px 9px;text-transform:uppercase}"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "description": "A stable, high-contrast institutional input.",
+      "html": "<input class=\"ds-input\" placeholder=\"name@mau.edu.ng\">",
+      "css": ".ds-input{background:#fff;border:1px solid #9dabb9;border-radius:3px;color:#142234;font:400 16px Archivo,Arial,sans-serif;min-height:48px;padding:10px 14px;width:100%}.ds-input:focus-visible{border-color:#08264a;outline:3px solid rgb(243 182 31 / 30%);outline-offset:0}"
+    },
+    {
+      "name": "Course Card",
+      "kind": "card",
+      "description": "A flat ruled container for one course workspace.",
+      "html": "<article class=\"ds-course-card\"><span>CIE 111</span><h3>Introduction to Computing</h3><p>24 enrolled students</p></article>",
+      "css": ".ds-course-card{background:#fff;border:1px solid #cfd8e2;border-radius:3px;border-top:4px solid #08264a;color:#142234;font-family:Archivo,Arial,sans-serif;padding:22px}.ds-course-card span{color:#526174;font-size:11px;font-weight:800;letter-spacing:.075em;text-transform:uppercase}.ds-course-card h3{color:#08264a;font-size:24px;margin:10px 0}.ds-course-card p{color:#526174;margin:0}"
+    },
+    {
+      "name": "Summary Ledger",
+      "kind": "custom",
+      "description": "A ruled strip that makes operational counts scannable without floating tiles.",
+      "html": "<div class=\"ds-summary\"><span>Enrolled students</span><strong>24</strong><small>Across your courses</small></div>",
+      "css": ".ds-summary{background:#fff;border:1px solid #cfd8e2;border-left:4px solid #f3b61f;color:#142234;font-family:Archivo,Arial,sans-serif;padding:20px}.ds-summary span{color:#526174;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}.ds-summary strong{color:#08264a;display:block;font-size:44px;line-height:1;margin:8px 0}.ds-summary small{color:#526174}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Academic Wayfinding",
+    "overview": "MAU-SOAP feels like a well-run university building translated into a digital service: authoritative entry points, visible course labels, clear destinations, and an orderly record. Public surfaces use confident photographic composition while dashboards prioritize course context and scan speed.",
+    "keyCharacteristics": [
+      "Full-width institutional page bands rather than centered floating app shells.",
+      "Course codes and status labels act as practical wayfinding markers.",
+      "Flat white work surfaces separated by rules, with shadows reserved for exceptional elevation.",
+      "Real education photography on public and sign-in surfaces only.",
+      "Responsive layouts preserve reading order before preserving columns."
+    ],
+    "rules": [
+      {"name": "The Gold Means Direction Rule", "body": "Gold identifies a destination, course, or decisive action; it is not ambient decoration.", "section": "colors"},
+      {"name": "The Destination First Rule", "body": "Every screen leads with the destination or task itself; never place a generic eyebrow above the heading.", "section": "typography"},
+      {"name": "The Flat Record Rule", "body": "Academic records and course resources rest on the page; they do not compete through elevation.", "section": "elevation"}
+    ],
+    "dos": [
+      "Do organize resources beneath a visible course code and title.",
+      "Do use full-width page bands and ruled ledger structures for hierarchy.",
+      "Do reserve real campus or classroom photography for public and authentication context.",
+      "Do keep high-stakes exam controls visually stable and immediately legible.",
+      "Do preserve accessible focus, contrast, reduced-motion, and responsive behavior."
+    ],
+    "donts": [
+      "Don't introduce decorative gradients, glass panels, glowing decoration, or decorative blur; restrained photo-readability overlays are permitted.",
+      "Don't build pages from repeated identical floating cards when a list, ledger, or ruled section communicates structure better.",
+      "Don't use pills for ordinary labels, excessive rounding, or hover lift on every object.",
+      "Don't add generic eyebrow copy above page headings.",
+      "Don't use unlicensed imagery or fabricate an official university crest."
+    ]
+  }
+}

@@ -6,17 +6,28 @@
   <section class="dashboard-shell">
     <div class="page-heading">
       <div>
-        <span class="eyebrow">Verified Student account</span>
         <h1>Student dashboard</h1>
         <p>Welcome, <strong>{{ current_user.full_name }}</strong>.</p>
       </div>
     </div>
 
+    <section class="summary-grid" aria-label="Student workspace overview">
+      <article class="summary-card summary-card-success">
+        <span>My courses</span>
+        <strong>{{ accepted_enrollments|length }}</strong>
+        <small>Accepted enrollments</small>
+      </article>
+      <article class="summary-card summary-card-warning">
+        <span>Invitations</span>
+        <strong>{{ pending_enrollments|length }}</strong>
+        <small>Waiting for your response</small>
+      </article>
+    </section>
+
     {% if pending_enrollments %}
       <section class="card questions-card">
         <div class="card-heading">
           <div>
-            <span class="eyebrow">New invitations</span>
             <h2>Courses waiting for you</h2>
           </div>
           <span class="status-badge status-pending">
@@ -25,7 +36,7 @@
         </div>
         <div class="exam-grid">
           {% for enrollment in pending_enrollments %}
-            <article class="card exam-card">
+            <article class="card exam-card invitation-card">
               <span class="status-badge">{{ enrollment.course.code }}</span>
               <h3>{{ enrollment.course.title }}</h3>
               {% if enrollment.invited_by %}
@@ -58,11 +69,14 @@
               {{ enrollment.course.exams|length }} examination(s)
             </span>
           </div>
+          <p><a class="secondary-button" href="{{ url_for('student.course_detail', course_id=enrollment.course.id) }}">Open course workspace</a></p>
           {% if enrollment.course.exams %}
             <div class="exam-grid">
               {% for exam in enrollment.course.exams %}
                 {% set submission = submissions_by_exam.get(exam.id) %}
-                <article class="card exam-card">
+                {% set attempt_count = attempt_counts_by_exam.get(exam.id, 0) %}
+                {% set exam_state = exam_states.get(exam.id, 'available') %}
+                <article class="card exam-card assessment-card">
                   <div class="card-heading">
                     {% if submission and not submission.is_finalized %}
                       <span class="status-badge status-pending">In progress</span>
@@ -70,20 +84,27 @@
                       <span class="status-badge">Result released</span>
                     {% elif submission %}
                       <span class="status-badge status-pending">Result pending</span>
+                    {% elif exam_state == "upcoming" %}
+                      <span class="status-badge status-pending">Upcoming</span>
+                    {% elif exam_state == "closed" %}
+                      <span class="status-badge status-locked">Closed</span>
                     {% else %}
                       <span class="status-badge">Available</span>
                     {% endif %}
                   </div>
                   <h3>{{ exam.title }}</h3>
-                  <p>{{ exam.time_limit_minutes }} minutes</p>
-                  {% if submission and submission.is_finalized %}
+                  <p class="assessment-duration">
+                    <strong>{{ exam.time_limit_minutes }}</strong> minutes
+                  </p>
+                  <p class="muted-text">Attempt {{ [attempt_count + 1, exam.attempt_limit]|min }} of {{ exam.attempt_limit }}</p>
+                  {% if submission and submission.is_finalized and (attempt_count >= exam.attempt_limit or exam_state != 'available') %}
                     <a
                       class="secondary-button"
                       href="{{ url_for('student.result', submission_id=submission.id) }}"
                     >
                       Check result
                     </a>
-                  {% else %}
+                  {% elif exam_state == "available" %}
                     <p class="muted-text">
                       Opening starts the server timer and examination supervision.
                     </p>
@@ -93,10 +114,10 @@
                     >
                       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                       <button class="primary-button button-auto" type="submit">
-                        {{ "Resume examination" if submission else "Open examination" }}
+                        {{ "Resume examination" if submission and not submission.is_finalized else ("Start another attempt" if submission else "Open examination") }}
                       </button>
                     </form>
-                  {% endif %}
+                  {% else %}<p class="muted-text">{% if exam_state == "upcoming" %}Opens {{ exam.opens_at }} UTC.{% else %}Closed {{ exam.closes_at }} UTC.{% endif %}</p>{% endif %}
                 </article>
               {% endfor %}
             </div>

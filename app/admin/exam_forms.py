@@ -49,6 +49,19 @@ class ExamForm(FlaskForm):
             ),
         ],
     )
+    opens_at = DateTimeLocalField(
+        "Opens at (UTC)", format="%Y-%m-%dT%H:%M", validators=[Optional()]
+    )
+    closes_at = DateTimeLocalField(
+        "Closes at (UTC)", format="%Y-%m-%dT%H:%M", validators=[Optional()]
+    )
+    attempt_limit = IntegerField(
+        "Attempts allowed",
+        default=1,
+        validators=[Optional(), NumberRange(min=1, max=10)],
+    )
+    shuffle_questions = BooleanField("Shuffle question order for each attempt")
+    shuffle_options = BooleanField("Shuffle multiple-choice options for each attempt")
     monitor_type = SelectField(
         "Webcam monitoring",
         choices=[
@@ -92,7 +105,6 @@ class ExamForm(FlaskForm):
                     "Choose when the result should be released."
                 )
                 return False
-
             current_utc = datetime.now(UTC).replace(tzinfo=None)
             if self.scheduled_release_at.data <= current_utc:
                 self.scheduled_release_at.errors.append(
@@ -100,7 +112,26 @@ class ExamForm(FlaskForm):
                 )
                 return False
 
+        if (
+            self.opens_at.data is not None
+            and self.closes_at.data is not None
+            and self.closes_at.data <= self.opens_at.data
+        ):
+            self.closes_at.errors.append("Closing time must be after opening time.")
+            return False
+
         return True
+
+
+class ExamAccommodationForm(FlaskForm):
+    """Grant an enrolled Student additional examination time."""
+
+    student_id = SelectField("Student", coerce=int, validators=[DataRequired()])
+    extra_time_minutes = IntegerField(
+        "Additional minutes",
+        validators=[InputRequired(), NumberRange(min=0, max=1440)],
+    )
+    submit = SubmitField("Save accommodation")
 
 
 class QuestionForm(FlaskForm):
@@ -160,9 +191,7 @@ class QuestionForm(FlaskForm):
         "Correct short answer",
         validators=[Optional(), Length(max=5000)],
     )
-    short_answer_case_sensitive = BooleanField(
-        "Answer is case-sensitive"
-    )
+    short_answer_case_sensitive = BooleanField("Answer is case-sensitive")
     short_answer_trim_whitespace = BooleanField(
         "Ignore leading and trailing spaces",
         default=True,
@@ -187,20 +216,15 @@ class QuestionForm(FlaskForm):
             }
 
             if not options["A"]:
-                self.mcq_option_a.errors.append(
-                    "Option A is required."
-                )
+                self.mcq_option_a.errors.append("Option A is required.")
                 is_valid = False
 
             if not options["B"]:
-                self.mcq_option_b.errors.append(
-                    "Option B is required."
-                )
+                self.mcq_option_b.errors.append("Option B is required.")
                 is_valid = False
 
-            if (
-                not self.correct_option.data
-                or not options.get(self.correct_option.data, "")
+            if not self.correct_option.data or not options.get(
+                self.correct_option.data, ""
             ):
                 self.correct_option.errors.append(
                     "Select a correct option that contains an answer."
@@ -209,9 +233,7 @@ class QuestionForm(FlaskForm):
 
         elif question_type is QuestionType.SHORT_ANSWER:
             if not (self.short_answer.data or "").strip():
-                self.short_answer.errors.append(
-                    "A correct short answer is required."
-                )
+                self.short_answer.errors.append("A correct short answer is required.")
                 is_valid = False
 
         return is_valid

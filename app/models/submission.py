@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
+    JSON,
     CheckConstraint,
     DateTime,
     ForeignKey,
@@ -32,7 +33,12 @@ class Submission(TimestampMixin, db.Model):
 
     __tablename__ = "submissions"
     __table_args__ = (
-        UniqueConstraint("exam_id", "candidate_email", name="candidate_exam"),
+        UniqueConstraint(
+            "exam_id",
+            "candidate_email",
+            "attempt_number",
+            name="candidate_exam_attempt",
+        ),
         CheckConstraint("warn_count >= 0 AND warn_count <= 3", name="warning_range"),
         CheckConstraint(
             "submitted_at IS NULL OR submitted_at >= started_at",
@@ -48,9 +54,14 @@ class Submission(TimestampMixin, db.Model):
     )
     candidate_name: Mapped[str] = mapped_column(String(255))
     candidate_email: Mapped[str] = mapped_column(String(255))
+    attempt_number: Mapped[int] = mapped_column(default=1, server_default="1")
     responses: Mapped[JsonObject] = mapped_column(
         MutableDict.as_mutable(JSON_DOCUMENT),
         default=dict,
+    )
+    question_order: Mapped[list[int] | None] = mapped_column(JSON)
+    option_orders: Mapped[JsonObject | None] = mapped_column(
+        MutableDict.as_mutable(JSON_DOCUMENT)
     )
     resume_token_hash: Mapped[str] = mapped_column(
         String(64),

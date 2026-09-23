@@ -16,6 +16,7 @@ from app.models import (
     CourseEnrollment,
     EnrollmentStatus,
     Exam,
+    ExamAccommodation,
     Role,
     Submission,
     User,
@@ -32,28 +33,52 @@ class FinalizedSubmissionError(Exception):
     """Raised when code attempts to change a finalized submission."""
 
 
+class AttemptLimitReachedError(Exception):
+    """Raised when a Student has used every allowed attempt."""
+
+
+class ExamUnavailableError(Exception):
+    """Raised when an examination is outside its configured window."""
+
+
+def exam_availability(exam: Exam, *, now: datetime | None = None) -> str:
+    """Return available, upcoming, or closed from server-controlled UTC time."""
+
+    current_time = aware_utc(now) if now is not None else utc_now()
+    if exam.opens_at is not None and current_time < aware_utc(exam.opens_at):
+        return "upcoming"
+    if exam.closes_at is not None and current_time >= aware_utc(exam.closes_at):
+        return "closed"
+    return "available"
+
+
 def student_can_access_exam(exam: Exam, student: User) -> bool:
     """Return whether an active Student accepted the exam's course invite."""
 
     if student.role is not Role.STUDENT or not student.can_access_portal:
         return False
-    return db.session.scalar(
-        select(CourseEnrollment.id).where(
-            CourseEnrollment.course_id == exam.course_id,
-            CourseEnrollment.student_id == student.id,
-            CourseEnrollment.status == EnrollmentStatus.ACCEPTED,
+    return (
+        db.session.scalar(
+            select(CourseEnrollment.id).where(
+                CourseEnrollment.course_id == exam.course_id,
+                CourseEnrollment.student_id == student.id,
+                CourseEnrollment.status == EnrollmentStatus.ACCEPTED,
+            )
         )
-    ) is not None
+        is not None
+    )
 
 
 def submission_for_student(exam: Exam, student: User) -> Submission | None:
-    """Resolve the logged-in Student's single attempt for an examination."""
+    """Resolve the logged-in Student's latest attempt for an examination."""
 
     return db.session.scalar(
-        select(Submission).where(
+        select(Submission)
+        .where(
             Submission.exam_id == exam.id,
             Submission.candidate_email == student.email,
         )
+        .order_by(Submission.attempt_number.desc())
     )
 
 
@@ -80,10 +105,11 @@ def start_submission(
 ) -> tuple[Submission, bool]:
     """Create exactly one server-started attempt, or resume that Student."""
 
-    candidate_email = str(
-        getattr(student, "email", None)
-        or student.candidate_email
-    ).strip().casefold()
+    candidate_email = (
+        str(getattr(student, "email", None) or student.candidate_email)
+        .strip()
+        .casefold()
+    )
     candidate_name = str(
         getattr(student, "full_name", None)
         or getattr(student, "candidate_name", None)
@@ -92,12 +118,15 @@ def start_submission(
     session_token_hash = credential_digest(
         raw_session_token or secrets.token_urlsafe(32)
     )
-    existing = db.session.scalar(
-        select(Submission).where(
+    attempts = db.session.scalars(
+        select(Submission)
+        .where(
             Submission.exam_id == exam.id,
             Submission.candidate_email == candidate_email,
         )
-    )
+        .order_by(Submission.attempt_number.desc())
+    ).all()
+    existing = next((item for item in attempts if not item.is_finalized), None)
     if existing is not None:
         if raw_session_token is not None and not secrets_match(
             existing.resume_token_hash,
@@ -106,12 +135,31 @@ def start_submission(
             raise ExistingAttemptError
         return existing, False
 
+    if exam_availability(exam) != "available":
+        raise ExamUnavailableError(exam_availability(exam))
+    if len(attempts) >= exam.attempt_limit:
+        return attempts[0], False
+
     started_at = utc_now()
+    question_order = [question.id for question in exam.questions]
+    randomizer = secrets.SystemRandom()
+    if exam.shuffle_questions:
+        randomizer.shuffle(question_order)
+    option_orders = {}
+    for question in exam.questions:
+        if question.options:
+            option_keys = list(question.options)
+            if exam.shuffle_options:
+                randomizer.shuffle(option_keys)
+            option_orders[str(question.id)] = option_keys
     submission = Submission(
         exam=exam,
         candidate_name=candidate_name,
         candidate_email=candidate_email,
+        attempt_number=(attempts[0].attempt_number + 1 if attempts else 1),
         responses={},
+        question_order=question_order,
+        option_orders=option_orders,
         resume_token_hash=session_token_hash,
         started_at=started_at,
         supervision_consent_at=started_at,
@@ -123,10 +171,12 @@ def start_submission(
     except IntegrityError as error:
         db.session.rollback()
         concurrent = db.session.scalar(
-            select(Submission).where(
+            select(Submission)
+            .where(
                 Submission.exam_id == exam.id,
                 Submission.candidate_email == candidate_email,
             )
+            .order_by(Submission.attempt_number.desc())
         )
         if concurrent is None or (
             raw_session_token is not None
@@ -149,9 +199,26 @@ def secrets_match(stored_digest: str, candidate_digest: str) -> bool:
 def submission_deadline(submission: Submission) -> datetime:
     """Return the UTC deadline derived only from the server start time."""
 
-    return aware_utc(submission.started_at) + timedelta(
-        minutes=submission.exam.time_limit_minutes
+    student_id = db.session.scalar(
+        select(User.id).where(User.email == submission.candidate_email)
     )
+    extra_minutes = 0
+    if student_id is not None:
+        extra_minutes = (
+            db.session.scalar(
+                select(ExamAccommodation.extra_time_minutes).where(
+                    ExamAccommodation.exam_id == submission.exam_id,
+                    ExamAccommodation.student_id == student_id,
+                )
+            )
+            or 0
+        )
+    deadline = aware_utc(submission.started_at) + timedelta(
+        minutes=submission.exam.time_limit_minutes + extra_minutes
+    )
+    if submission.exam.closes_at is not None:
+        deadline = min(deadline, aware_utc(submission.exam.closes_at))
+    return deadline
 
 
 def remaining_seconds(

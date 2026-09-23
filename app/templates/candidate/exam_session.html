@@ -20,7 +20,7 @@
   >
     <header class="card session-header">
       <div>
-        <span class="eyebrow">{{ exam.course_code }}</span>
+        <span class="course-marker">{{ exam.course_code }}</span>
         <h1>{{ exam.title }}</h1>
         <p>{{ submission.candidate_name }}</p>
       </div>
@@ -37,8 +37,6 @@
       aria-labelledby="supervision-title"
     >
       <div>
-        <span class="eyebrow">Active supervision</span>
-
         <h2 id="supervision-title">
           {{ "Face presence" if exam.monitor_type.value == "face" else "Eye and gaze" }} monitoring
         </h2>

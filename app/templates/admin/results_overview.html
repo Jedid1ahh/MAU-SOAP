@@ -6,7 +6,6 @@
   <section class="dashboard-shell">
     <div class="page-heading">
       <div>
-        <span class="eyebrow">Phase 10 · Result release</span>
         <h1>Candidate results</h1>
         <p>Monitor grading completion and Candidate result availability.</p>
       </div>
@@ -19,7 +18,7 @@
       <div class="exam-grid">
         {% for submission in submissions %}
           {% set result = submission.result %}
-          <article class="card exam-card">
+          <article class="card exam-card result-card">
             <div class="card-heading">
               {% if result.is_released %}
                 <span class="status-badge">Released</span>

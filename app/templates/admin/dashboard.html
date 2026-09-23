@@ -6,15 +6,18 @@
   <section class="dashboard-shell">
     <div class="page-heading">
       <div>
-        <span class="eyebrow">System administration</span>
         <h1>Admin dashboard</h1>
         <p>
-          Manage institutional accounts, create courses, and assign each
-          course to one approved Lecturer.
+          Manage institutional accounts, create courses, and assign one
+          approved Lecturer to each course through this System administration
+          workspace.
         </p>
       </div>
 
       <div class="item-actions">
+        <a class="secondary-button" href="{{ url_for('admin.academic_structure') }}">
+          Academic structure
+        </a>
         <a class="secondary-button" href="{{ url_for('admin.accounts') }}">
           Accounts
         </a>
@@ -24,10 +27,28 @@
       </div>
     </div>
 
+    <section class="summary-grid" aria-label="Administration overview">
+      <article class="summary-card">
+        <span>Total courses</span>
+        <strong>{{ courses|length }}</strong>
+        <small>Created workspaces</small>
+      </article>
+      <article class="summary-card summary-card-success">
+        <span>Assigned</span>
+        <strong>{{ courses|selectattr('lecturer')|list|length }}</strong>
+        <small>Courses with a Lecturer</small>
+      </article>
+      <article class="summary-card summary-card-warning">
+        <span>Needs assignment</span>
+        <strong>{{ courses|rejectattr('lecturer')|list|length }}</strong>
+        <small>Unassigned courses</small>
+      </article>
+    </section>
+
     {% if courses %}
       <div class="exam-grid">
         {% for course in courses %}
-          <article class="card exam-card">
+          <article class="card exam-card course-card">
             <div class="card-heading">
               <span class="status-badge {{ 'status-pending' if not course.lecturer else '' }}">
                 {{ "Assigned" if course.lecturer else "Unassigned" }}
@@ -54,6 +75,13 @@
               <div>
                 <dt>Examinations</dt>
                 <dd>{{ course.exams|length }}</dd>
+              </div>
+              <div>
+                <dt>Academic placement</dt>
+                <dd>
+                  {% if course.semester %}{{ course.semester.academic_session.name }} · {{ course.semester.name }}{% else %}Not specified{% endif %}
+                  {% if course.level %} · {{ course.level }} level{% endif %}
+                </dd>
               </div>
             </dl>
 

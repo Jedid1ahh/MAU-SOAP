@@ -34,6 +34,12 @@ class QuestionType(StringEnum):
     SHORT_ANSWER = "short_answer"
 
 
+class DifficultyLevel(StringEnum):
+    EASY = "easy"
+    MEDIUM = "medium"
+    HARD = "hard"
+
+
 class ViolationType(StringEnum):
     COPY_PASTE = "copy_paste"
     SCREENSHOT_ATTEMPT = "screenshot_attempt"

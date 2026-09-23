@@ -13,9 +13,20 @@ from app.extensions import db
 from app.lecturer import lecturer_bp
 from app.lecturer.auth import lecturer_required
 from app.lecturer.routes import owned_course
-from app.models import Course, Exam, MonitorType, Question, QuestionType, ReleaseOption
+from app.models import (
+    Course,
+    CourseEnrollment,
+    EnrollmentStatus,
+    Exam,
+    ExamAccommodation,
+    MonitorType,
+    Question,
+    QuestionType,
+    ReleaseOption,
+    User,
+)
 
-from .exam_forms import ExamForm, QuestionForm
+from .exam_forms import ExamAccommodationForm, ExamForm, QuestionForm
 
 
 def _owned_exam(exam_id: int) -> Exam:
@@ -67,6 +78,15 @@ def _apply_exam_form(exam: Exam, form: ExamForm) -> None:
     exam.title = form.title.data.strip()
     exam.instructions = (form.instructions.data or "").strip() or None
     exam.time_limit_minutes = form.time_limit_minutes.data
+    exam.opens_at = (
+        form.opens_at.data.replace(tzinfo=UTC) if form.opens_at.data else None
+    )
+    exam.closes_at = (
+        form.closes_at.data.replace(tzinfo=UTC) if form.closes_at.data else None
+    )
+    exam.attempt_limit = form.attempt_limit.data or 1
+    exam.shuffle_questions = form.shuffle_questions.data
+    exam.shuffle_options = form.shuffle_options.data
     exam.monitor_type = MonitorType(form.monitor_type.data)
     exam.release_option = ReleaseOption(form.release_option.data)
     exam.scheduled_release_at = (
@@ -105,12 +125,8 @@ def _question_values(form: QuestionForm) -> dict:
         values["correct_answer"] = form.correct_option.data
     elif question_type is QuestionType.SHORT_ANSWER:
         values["correct_answer"] = form.short_answer.data.strip()
-        values["short_answer_case_sensitive"] = (
-            form.short_answer_case_sensitive.data
-        )
-        values["short_answer_trim_whitespace"] = (
-            form.short_answer_trim_whitespace.data
-        )
+        values["short_answer_case_sensitive"] = form.short_answer_case_sensitive.data
+        values["short_answer_trim_whitespace"] = form.short_answer_trim_whitespace.data
 
     return values
 
@@ -125,6 +141,13 @@ def _exam_form_for_edit(exam: Exam) -> ExamForm:
             "title": exam.title,
             "instructions": exam.instructions,
             "time_limit_minutes": exam.time_limit_minutes,
+            "opens_at": (exam.opens_at.replace(tzinfo=None) if exam.opens_at else None),
+            "closes_at": (
+                exam.closes_at.replace(tzinfo=None) if exam.closes_at else None
+            ),
+            "attempt_limit": exam.attempt_limit,
+            "shuffle_questions": exam.shuffle_questions,
+            "shuffle_options": exam.shuffle_options,
             "monitor_type": exam.monitor_type.value,
             "release_option": exam.release_option.value,
             "scheduled_release_at": (
@@ -208,7 +231,74 @@ def create_exam(course_id: int):
 def exam_detail(exam_id: int):
     """Show one examination, its questions, and its shareable link."""
 
-    return render_template("admin/exam_detail.html", exam=_owned_exam(exam_id))
+    exam = _owned_exam(exam_id)
+    form = ExamAccommodationForm()
+    students = db.session.scalars(
+        select(User)
+        .join(CourseEnrollment, CourseEnrollment.student_id == User.id)
+        .where(
+            CourseEnrollment.course_id == exam.course_id,
+            CourseEnrollment.status == EnrollmentStatus.ACCEPTED,
+        )
+        .order_by(User.full_name)
+    ).all()
+    form.student_id.choices = [(student.id, student.full_name) for student in students]
+    return render_template("admin/exam_detail.html", exam=exam, accommodation_form=form)
+
+
+@lecturer_bp.post("/exams/<int:exam_id>/accommodations")
+@lecturer_required
+def save_exam_accommodation(exam_id: int):
+    """Create or replace an extra-time grant for an enrolled Student."""
+
+    exam = _owned_exam(exam_id)
+    form = ExamAccommodationForm()
+    student_ids = db.session.scalars(
+        select(CourseEnrollment.student_id).where(
+            CourseEnrollment.course_id == exam.course_id,
+            CourseEnrollment.status == EnrollmentStatus.ACCEPTED,
+        )
+    ).all()
+    form.student_id.choices = [(value, str(value)) for value in student_ids]
+    if not form.validate_on_submit() or form.student_id.data not in student_ids:
+        flash("Choose an enrolled Student and a valid time allowance.", "error")
+        return redirect(url_for("lecturer.exam_detail", exam_id=exam.id))
+    accommodation = db.session.scalar(
+        select(ExamAccommodation).where(
+            ExamAccommodation.exam_id == exam.id,
+            ExamAccommodation.student_id == form.student_id.data,
+        )
+    )
+    if accommodation is None:
+        accommodation = ExamAccommodation(
+            exam=exam,
+            student_id=form.student_id.data,
+        )
+        db.session.add(accommodation)
+    accommodation.extra_time_minutes = form.extra_time_minutes.data
+    db.session.commit()
+    flash("Student time accommodation saved.", "success")
+    return redirect(url_for("lecturer.exam_detail", exam_id=exam.id))
+
+
+@lecturer_bp.post("/exams/<int:exam_id>/accommodations/<int:accommodation_id>/delete")
+@lecturer_required
+def delete_exam_accommodation(exam_id: int, accommodation_id: int):
+    """Remove an extra-time grant belonging to the Lecturer's examination."""
+
+    exam = _owned_exam(exam_id)
+    accommodation = db.session.scalar(
+        select(ExamAccommodation).where(
+            ExamAccommodation.id == accommodation_id,
+            ExamAccommodation.exam_id == exam.id,
+        )
+    )
+    if accommodation is None:
+        abort(404)
+    db.session.delete(accommodation)
+    db.session.commit()
+    flash("Time accommodation removed.", "success")
+    return redirect(url_for("lecturer.exam_detail", exam_id=exam.id))
 
 
 @lecturer_bp.route("/exams/<int:exam_id>/edit", methods=["GET", "POST"])
@@ -268,9 +358,7 @@ def create_question(exam_id: int):
     form = QuestionForm()
     if form.validate_on_submit():
         max_position = db.session.scalar(
-            select(func.max(Question.position)).where(
-                Question.exam_id == exam.id
-            )
+            select(func.max(Question.position)).where(Question.exam_id == exam.id)
         )
         question = Question(
             exam=exam,
@@ -322,9 +410,7 @@ def edit_question(exam_id: int, question_id: int):
     )
 
 
-@lecturer_bp.post(
-    "/exams/<int:exam_id>/questions/<int:question_id>/delete"
-)
+@lecturer_bp.post("/exams/<int:exam_id>/questions/<int:question_id>/delete")
 @lecturer_required
 def delete_question(exam_id: int, question_id: int):
     """Delete a question before the examination becomes locked."""

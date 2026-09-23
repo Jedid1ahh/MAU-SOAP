@@ -5,7 +5,15 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, String, Text
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    String,
+    Text,
+    false,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.extensions import db
@@ -15,6 +23,7 @@ from .enums import MonitorType, ReleaseOption
 
 if TYPE_CHECKING:
     from .course import Course
+    from .exam_accommodation import ExamAccommodation
     from .question import Question
     from .submission import Submission
     from .user import User
@@ -33,6 +42,11 @@ class Exam(TimestampMixin, db.Model):
         CheckConstraint(
             "release_option <> 'scheduled' OR scheduled_release_at IS NOT NULL",
             name="scheduled_release_has_time",
+        ),
+        CheckConstraint("attempt_limit > 0", name="positive_attempt_limit"),
+        CheckConstraint(
+            "closes_at IS NULL OR opens_at IS NULL OR closes_at > opens_at",
+            name="exam_window_order",
         ),
     )
 
@@ -61,6 +75,19 @@ class Exam(TimestampMixin, db.Model):
     scheduled_release_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True)
     )
+    opens_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), index=True
+    )
+    closes_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), index=True
+    )
+    attempt_limit: Mapped[int] = mapped_column(default=1, server_default="1")
+    shuffle_questions: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=false()
+    )
+    shuffle_options: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=false()
+    )
     exam_link_token: Mapped[str] = mapped_column(
         String(255),
         unique=True,
@@ -81,6 +108,11 @@ class Exam(TimestampMixin, db.Model):
         passive_deletes=True,
     )
     verification_tokens: Mapped[list[VerificationToken]] = relationship(
+        back_populates="exam",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    accommodations: Mapped[list[ExamAccommodation]] = relationship(
         back_populates="exam",
         cascade="all, delete-orphan",
         passive_deletes=True,

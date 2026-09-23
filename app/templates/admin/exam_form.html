@@ -4,7 +4,6 @@
 
 {% block content %}
   <section class="card form-card">
-    <span class="eyebrow">Examination settings</span>
     <h1>{{ form_title }}</h1>
 
     <p>
@@ -48,6 +47,14 @@
           {% for error in form.monitor_type.errors %}
             <span class="field-error">{{ error }}</span>
           {% endfor %}
+        </div>
+
+        <div class="form-group">{{ form.opens_at.label }}{{ form.opens_at() }}{% for error in form.opens_at.errors %}<span class="field-error">{{ error }}</span>{% endfor %}</div>
+        <div class="form-group">{{ form.closes_at.label }}{{ form.closes_at() }}{% for error in form.closes_at.errors %}<span class="field-error">{{ error }}</span>{% endfor %}</div>
+        <div class="form-group">{{ form.attempt_limit.label }}{{ form.attempt_limit(min="1", max="10") }}{% for error in form.attempt_limit.errors %}<span class="field-error">{{ error }}</span>{% endfor %}</div>
+        <div class="form-group form-group-wide">
+          <label class="checkbox-row">{{ form.shuffle_questions() }} {{ form.shuffle_questions.label.text }}</label>
+          <label class="checkbox-row">{{ form.shuffle_options() }} {{ form.shuffle_options.label.text }}</label>
         </div>
 
         <div class="form-group">

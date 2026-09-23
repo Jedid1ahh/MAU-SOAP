@@ -3,44 +3,104 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#08264a">
+    <meta
+      name="description"
+      content="MAU-SOAP secure online assessment and course management portal."
+    >
     <title>{% block title %}MAU-SOAP{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    >
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
   </head>
-  <body>
+  <body class="{% block body_class %}{% endblock %}">
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
     <header class="site-header">
-      <a class="brand" href="{{ url_for('main.index') }}">MAU-SOAP</a>
-      <nav aria-label="Primary navigation">
-        {% if current_user.is_authenticated %}
-          {% if current_user.role.value == "admin" %}
-            <a href="{{ url_for('admin.index') }}">Admin dashboard</a>
-          {% elif current_user.role.value == "lecturer" %}
-            <a href="{{ url_for('lecturer.index') }}">Lecturer dashboard</a>
+      <div class="university-bar">
+        <div>
+          <span>Modibbo Adama University, Yola</span>
+          <span class="university-bar-separator" aria-hidden="true"></span>
+          <span>Secure Online Assessment Portal</span>
+        </div>
+      </div>
+      <div class="header-inner">
+        <a class="brand" href="{{ url_for('main.index') }}" aria-label="MAU-SOAP home">
+          <span class="brand-mark" aria-hidden="true">MAU</span>
+          <span class="brand-copy">
+            <strong>MAU-SOAP</strong>
+            <small>Assessment by course</small>
+          </span>
+        </a>
+
+        <nav class="primary-nav" aria-label="Primary navigation">
+          {% if current_user.is_authenticated %}
+            <span class="user-context">
+              <span class="user-name">
+                {{ current_user.full_name or current_user.email }}
+              </span>
+              <span class="role-pill">{{ current_user.role.value|title }}</span>
+            </span>
+
+            {% if current_user.role.value == "admin" %}
+              <a
+                class="nav-link"
+                href="{{ url_for('admin.index') }}"
+                {% if request.endpoint == 'admin.index' %}aria-current="page"{% endif %}
+              >Admin dashboard</a>
+            {% elif current_user.role.value == "lecturer" %}
+              <a
+                class="nav-link"
+                href="{{ url_for('lecturer.index') }}"
+                {% if request.endpoint == 'lecturer.index' %}aria-current="page"{% endif %}
+              >Lecturer dashboard</a>
+            {% else %}
+              <a
+                class="nav-link"
+                href="{{ url_for('student.index') }}"
+                {% if request.endpoint == 'student.index' %}aria-current="page"{% endif %}
+              >Student dashboard</a>
+            {% endif %}
+
+            <form action="{{ url_for('accounts.logout') }}" method="post">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="nav-link nav-button" type="submit">Log out</button>
+            </form>
           {% else %}
-            <a href="{{ url_for('student.index') }}">Student dashboard</a>
+            <a
+              class="nav-link"
+              href="{{ url_for('accounts.login') }}"
+              {% if request.endpoint == 'accounts.login' %}aria-current="page"{% endif %}
+            >Login</a>
           {% endif %}
-          <form
-            action="{{ url_for('accounts.logout') }}"
-            method="post"
-          >
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button class="link-button" type="submit">Log out</button>
-          </form>
-        {% else %}
-          <a href="{{ url_for('accounts.login') }}">Login</a>
-        {% endif %}
-      </nav>
+        </nav>
+      </div>
     </header>
 
-    <main class="page-shell">
-      <section class="flash-stack" aria-live="polite">
+    <main id="main-content" class="page-shell" tabindex="-1">
+      <section class="flash-stack" aria-live="polite" aria-atomic="true">
         {% with messages = get_flashed_messages(with_categories=true) %}
           {% for category, message in messages %}
-            <div class="flash flash-{{ category }}">{{ message }}</div>
+            <div class="flash flash-{{ category }}" role="status">
+              <span class="flash-indicator" aria-hidden="true"></span>
+              <span>{{ message }}</span>
+            </div>
           {% endfor %}
         {% endwith %}
       </section>
 
       {% block content %}{% endblock %}
     </main>
+
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <p><strong>MAU-SOAP</strong> · Modibbo Adama University, Yola</p>
+        <p>Course · Examination · Grade · Result</p>
+      </div>
+    </footer>
   </body>
 </html>

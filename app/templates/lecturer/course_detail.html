@@ -16,10 +16,34 @@
     </div>
 
     <div class="detail-grid">
+      <section class="card"><div class="card-heading"><h2>Announcements</h2><span class="muted-text">{{ course.announcements|length }}</span></div><form method="post" action="{{ url_for('lecturer.create_announcement', course_id=course.id) }}">{{ announcement_form.hidden_tag() }}<div class="form-group">{{ announcement_form.title.label }}{{ announcement_form.title() }}</div><div class="form-group">{{ announcement_form.body.label }}{{ announcement_form.body(rows="4") }}</div><label class="checkbox-row">{{ announcement_form.is_pinned() }} {{ announcement_form.is_pinned.label.text }}</label><button class="secondary-button" type="submit">Publish announcement</button></form>{% if course.announcements %}<ul class="question-list">{% for item in course.announcements %}<li><strong>{{ item.title }}</strong><p>{{ item.body }}</p></li>{% endfor %}</ul>{% endif %}</section>
+      <section class="card"><div class="card-heading"><h2>Course materials</h2><span class="muted-text">{{ course.materials|length }}</span></div><form method="post" enctype="multipart/form-data" action="{{ url_for('lecturer.create_material', course_id=course.id) }}">{{ material_form.hidden_tag() }}<div class="form-group">{{ material_form.title.label }}{{ material_form.title() }}</div><div class="form-group">{{ material_form.description.label }}{{ material_form.description(rows="3") }}</div><div class="form-group">{{ material_form.external_url.label }}{{ material_form.external_url() }}</div><div class="form-group">{{ material_form.material_file.label }}{{ material_form.material_file() }}</div><button class="secondary-button" type="submit">Add material</button></form>{% if course.materials %}<ul class="question-list">{% for item in course.materials %}<li><div class="card-heading"><span><strong>{{ item.title }}</strong>{% if item.storage_name %} · <a href="{{ url_for('lecturer.download_material', material_id=item.id) }}">Download</a>{% endif %}{% if item.external_url %} · <a href="{{ item.external_url }}">Open link</a>{% endif %}</span><form method="post" action="{{ url_for('lecturer.delete_material', course_id=course.id, material_id=item.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="danger-link" type="submit">Remove</button></form></div></li>{% endfor %}</ul>{% endif %}</section>
+    </div>
+
+    <section class="card questions-card"><div class="card-heading"><div><h2>Assignments</h2><p>{{ course.assignments|length }} course task(s)</p></div><a class="primary-button button-auto" href="{{ url_for('lecturer.create_assignment', course_id=course.id) }}">Create assignment</a></div>{% if course.assignments %}<div class="exam-grid">{% for assignment in course.assignments %}<article class="card exam-card"><span class="status-badge">{{ "Published" if assignment.is_published else "Draft" }}</span><h3>{{ assignment.title }}</h3><p>Due {{ assignment.due_at }} UTC · {{ assignment.submissions|length }} submission(s)</p><a class="secondary-button" href="{{ url_for('lecturer.assignment_detail', assignment_id=assignment.id) }}">Review assignment</a></article>{% endfor %}</div>{% else %}<p class="muted-text">No assignments have been created.</p>{% endif %}</section>
+
+    <section class="summary-grid" aria-label="Course overview">
+      <article class="summary-card summary-card-success">
+        <span>Enrolled Students</span>
+        <strong>{{ accepted_enrollments|length }}</strong>
+        <small>Active course members</small>
+      </article>
+      <article class="summary-card summary-card-warning">
+        <span>Pending invitations</span>
+        <strong>{{ pending_enrollments|length }}</strong>
+        <small>Awaiting acceptance</small>
+      </article>
+      <article class="summary-card">
+        <span>Examinations</span>
+        <strong>{{ course.exams|length }}</strong>
+        <small>Course assessments</small>
+      </article>
+    </section>
+
+    <div class="detail-grid">
       <section class="card">
         <div class="card-heading">
           <div>
-            <span class="eyebrow">Course roster</span>
             <h2>Invite Students</h2>
           </div>
         </div>
@@ -49,7 +73,6 @@
       <section class="card">
         <div class="card-heading">
           <div>
-            <span class="eyebrow">Membership</span>
             <h2>Students</h2>
           </div>
           <span class="muted-text">{{ accepted_enrollments|length }} enrolled</span>
@@ -84,15 +107,12 @@
     <section class="card questions-card">
       <div class="card-heading">
         <div>
-          <span class="eyebrow">Course resources</span>
           <h2>Examinations</h2>
         </div>
-        <a
-          class="primary-button button-auto"
-          href="{{ url_for('lecturer.create_exam', course_id=course.id) }}"
-        >
-          Create examination
-        </a>
+        <div class="form-actions">
+          <a class="secondary-button" href="{{ url_for('lecturer.question_bank', course_id=course.id) }}">Question bank</a>
+          <a class="primary-button button-auto" href="{{ url_for('lecturer.create_exam', course_id=course.id) }}">Create examination</a>
+        </div>
       </div>
       {% if course.exams %}
         <div class="exam-grid">

@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Add from question bank | MAU-SOAP{% endblock %}
+{% block content %}
+  <section class="dashboard-shell">
+    <div class="page-heading"><div><span class="status-badge">{{ exam.course_code }}</span><h1>Add from question bank</h1><p>{{ exam.title }}</p></div><a class="secondary-button" href="{{ url_for('lecturer.exam_detail', exam_id=exam.id) }}">Back to examination</a></div>
+    <form method="post" class="card" novalidate>
+      {{ form.hidden_tag() }}
+      <div class="form-grid"><div class="form-group">{{ form.category.label }}{{ form.category() }}</div><div class="form-group">{{ form.difficulty.label }}{{ form.difficulty() }}</div><div class="form-group">{{ form.random_count.label }}{{ form.random_count(min="0") }}{% for error in form.random_count.errors %}<span class="field-error">{{ error }}</span>{% endfor %}</div></div>
+      <p class="form-help">Tick exact questions, request a random set with the filters above, or combine both.</p>
+      {% if items %}<div class="question-list">{% for item in items %}<label class="checkbox-row question-bank-choice"><input type="checkbox" name="bank_item_ids" value="{{ item.id }}"><span><strong>{{ item.question_text }}</strong><br><small>{{ item.category }} · {{ item.difficulty.value|title }} · {{ item.marks }} mark(s)</small></span></label>{% endfor %}</div><button class="primary-button button-auto" type="submit">Add selected questions</button>{% else %}<div class="empty-state compact-empty"><p>The course question bank is empty.</p></div>{% endif %}
+    </form>
+  </section>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Question bank | {{ course.code }}{% endblock %}
+{% block content %}
+  <section class="dashboard-shell">
+    <div class="page-heading">
+      <div><span class="status-badge">{{ course.code }}</span><h1>Question bank</h1><p>Reusable questions for {{ course.title }}.</p></div>
+      <div class="form-actions"><a class="secondary-button" href="{{ url_for('lecturer.course_detail', course_id=course.id) }}">Back to course</a><a class="primary-button button-auto" href="{{ url_for('lecturer.create_bank_item', course_id=course.id) }}">Add question</a></div>
+    </div>
+    <section class="card">
+      <div class="card-heading"><div><h2>Import questions</h2><p class="muted-text">Upload up to 500 questions in a UTF-8 CSV file.</p></div></div>
+      <form method="post" enctype="multipart/form-data" action="{{ url_for('lecturer.import_question_bank', course_id=course.id) }}">
+        {{ import_form.hidden_tag() }}
+        <div class="form-actions">{{ import_form.csv_file(accept=".csv") }}<button class="secondary-button" type="submit">Import CSV</button></div>
+      </form>
+      <p class="form-help">Columns: category, difficulty, question_text, question_type, marks, option_a–option_d, correct_answer, case_sensitive, trim_whitespace.</p>
+    </section>
+    <section class="card questions-card">
+      <div class="card-heading"><h2>Saved questions</h2><span class="muted-text">{{ items|length }} item(s)</span></div>
+      {% if items %}
+        <ol class="question-list">
+          {% for item in items %}
+            <li><div class="card-heading"><div><span class="status-badge">{{ item.category }}</span> <span class="muted-text">{{ item.difficulty.value|title }} · {{ item.question_type.value|replace('_', ' ')|title }} · {{ item.marks }} mark(s)</span><h3>{{ item.question_text }}</h3></div><div class="form-actions"><a class="secondary-button" href="{{ url_for('lecturer.edit_bank_item', course_id=course.id, item_id=item.id) }}">Edit</a><form method="post" action="{{ url_for('lecturer.delete_bank_item', course_id=course.id, item_id=item.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="danger-button" type="submit">Delete</button></form></div></div></li>
+          {% endfor %}
+        </ol>
+      {% else %}<div class="empty-state compact-empty"><p>No questions have been saved yet.</p></div>{% endif %}
+    </section>
+  </section>
+{% endblock %}

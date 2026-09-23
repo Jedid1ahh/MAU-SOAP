@@ -6,7 +6,6 @@
   <section class="dashboard-shell">
     <div class="page-heading">
       <div>
-        <span class="eyebrow">Phase 9 · Manual review</span>
         <h1>Pending grading</h1>
         <p>Review open-ended Candidate responses and assign their marks.</p>
       </div>
@@ -18,7 +17,7 @@
     {% if submissions %}
       <div class="exam-grid">
         {% for submission in submissions %}
-          <article class="card exam-card">
+          <article class="card exam-card review-card">
             <div class="card-heading">
               <span class="status-badge status-locked">Pending review</span>
               <span class="muted-text">

@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}New assignment | {{ course.code }}{% endblock %}
+{% block content %}
+  <section class="card form-card"><span class="status-badge">{{ course.code }}</span><h1>Create assignment</h1><p>{{ course.title }}</p>
+    <form method="post" novalidate>{{ form.hidden_tag() }}
+      <div class="form-group">{{ form.title.label }}{{ form.title() }}{% for error in form.title.errors %}<span class="field-error">{{ error }}</span>{% endfor %}</div>
+      <div class="form-group">{{ form.instructions.label }}{{ form.instructions(rows="8") }}{% for error in form.instructions.errors %}<span class="field-error">{{ error }}</span>{% endfor %}</div>
+      <div class="form-grid"><div class="form-group">{{ form.due_at.label }}{{ form.due_at() }}{% for error in form.due_at.errors %}<span class="field-error">{{ error }}</span>{% endfor %}</div><div class="form-group">{{ form.max_marks.label }}{{ form.max_marks(min="0.01", step="0.01") }}{% for error in form.max_marks.errors %}<span class="field-error">{{ error }}</span>{% endfor %}</div></div>
+      <label class="checkbox-row">{{ form.is_published() }} {{ form.is_published.label.text }}</label>
+      <div class="form-actions"><button class="primary-button button-auto" type="submit">Create assignment</button><a class="secondary-button" href="{{ url_for('lecturer.course_detail', course_id=course.id) }}">Cancel</a></div>
+    </form>
+  </section>
+{% endblock %}

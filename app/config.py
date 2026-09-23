@@ -128,6 +128,11 @@ class BaseConfig:
             "30",
         )
     )
+    COURSE_MATERIAL_DIR = os.getenv("COURSE_MATERIAL_DIR")
+    ASSIGNMENT_SUBMISSION_DIR = os.getenv("ASSIGNMENT_SUBMISSION_DIR")
+    COURSEWORK_FILE_MAX_BYTES = int(
+        os.getenv("COURSEWORK_FILE_MAX_BYTES", str(10 * 1024 * 1024))
+    )
 
     PERMANENT_SESSION_LIFETIME = timedelta(minutes=30)
     SESSION_COOKIE_HTTPONLY = True

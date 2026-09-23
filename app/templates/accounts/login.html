@@ -2,44 +2,69 @@
 
 {% block title %}Login | MAU-SOAP{% endblock %}
 
+{% block body_class %}auth-page{% endblock %}
+
 {% block content %}
-  <section class="card auth-card">
-    <span class="eyebrow">Institutional access</span>
-    <h1>Login</h1>
-    <p>
-      Use your MAU-SOAP account. You will be sent to the Admin, Lecturer, or
-      Student dashboard assigned to your credentials.
-    </p>
-
-    <form method="post" novalidate>
-      {{ form.hidden_tag() }}
-      <div class="form-group">
-        {{ form.email.label }}
-        {{ form.email(autocomplete="username", inputmode="email") }}
-        {% for error in form.email.errors %}
-          <span class="field-error">{{ error }}</span>
-        {% endfor %}
+  <section class="auth-layout">
+    <aside class="auth-spotlight">
+      <img
+        src="https://images.pexels.com/photos/7742816/pexels-photo-7742816.jpeg?auto=compress&amp;cs=tinysrgb&amp;w=1200"
+        alt="Students completing computer-based learning activities in a classroom"
+        width="900"
+        height="900"
+      >
+      <div class="auth-spotlight-copy">
+        <h2>One secure sign-in.</h2>
+        <p>Your credentials identify your role and open the correct workspace.</p>
+        <span>Admin · Lecturer · Student</span>
       </div>
-      <div class="form-group">
-        {{ form.password.label }}
-        {{ form.password(autocomplete="current-password") }}
-        {% for error in form.password.errors %}
-          <span class="field-error">{{ error }}</span>
-        {% endfor %}
-      </div>
-      {{ form.submit(class="primary-button") }}
-    </form>
+    </aside>
 
-    <div class="auth-options">
-      <a href="{{ url_for('accounts.register_student') }}">
-        Create Student account
-      </a>
-      <a href="{{ url_for('accounts.register_lecturer') }}">
-        Register as Lecturer
-      </a>
-      <a href="{{ url_for('admin.request_password_reset') }}">
-        Forgot Admin password?
-      </a>
-    </div>
+    <section class="card auth-card">
+      <h1>Login</h1>
+      <p class="auth-lead">Use your institutional MAU-SOAP credentials.</p>
+
+      <form method="post" novalidate>
+        {{ form.hidden_tag() }}
+        <div class="form-group">
+          {{ form.email.label }}
+          {{ form.email(
+            autocomplete="username",
+            inputmode="email",
+            placeholder="name@mau.edu.ng"
+          ) }}
+          {% for error in form.email.errors %}
+            <span class="field-error">{{ error }}</span>
+          {% endfor %}
+        </div>
+        <div class="form-group">
+          {{ form.password.label }}
+          {{ form.password(
+            autocomplete="current-password",
+            placeholder="Enter your password"
+          ) }}
+          {% for error in form.password.errors %}
+            <span class="field-error">{{ error }}</span>
+          {% endfor %}
+        </div>
+        {{ form.submit(class="primary-button") }}
+      </form>
+
+      <div class="auth-options">
+        <strong>New to MAU-SOAP?</strong>
+        <div class="auth-links">
+          <a href="{{ url_for('accounts.register_student') }}">
+            Create Student account
+          </a>
+          <a href="{{ url_for('accounts.register_lecturer') }}">
+            Register as Lecturer
+          </a>
+        </div>
+        <a class="muted-link" href="{{ url_for('admin.request_password_reset') }}">
+          Forgot Admin password?
+        </a>
+        <small class="photo-credit">Photo: Alena Darmel / Pexels</small>
+      </div>
+    </section>
   </section>
 {% endblock %}
