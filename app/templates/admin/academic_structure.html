@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}Academic structure | MAU-SOAP{% endblock %}
+
+{% macro field_errors(field) %}
+  {% for error in field.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+{% endmacro %}
+
+{% block content %}
+  <section class="dashboard-shell">
+    <div class="page-heading">
+      <div>
+        <h1>Academic structure</h1>
+        <p>Define sessions, semesters, faculties, departments, and programmes before assigning them to courses.</p>
+      </div>
+      <a class="secondary-button" href="{{ url_for('admin.index') }}">Admin dashboard</a>
+    </div>
+
+    <div class="detail-grid academic-structure-grid">
+      <section class="card">
+        <h2>Academic calendar</h2>
+        <form method="post" action="{{ url_for('admin.create_academic_session') }}">
+          {{ session_form.hidden_tag() }}
+          <div class="form-group">{{ session_form.name.label }}{{ session_form.name(placeholder="2026/2027") }}{{ field_errors(session_form.name) }}</div>
+          <div class="form-grid">
+            <div class="form-group">{{ session_form.start_date.label }}{{ session_form.start_date() }}</div>
+            <div class="form-group">{{ session_form.end_date.label }}{{ session_form.end_date() }}</div>
+          </div>
+          <label class="checkbox-row">{{ session_form.is_current() }} <span>{{ session_form.is_current.label.text }}</span></label>
+          {{ session_form.submit(class="primary-button button-auto") }}
+        </form>
+
+        <hr>
+        <form method="post" action="{{ url_for('admin.create_semester') }}">
+          {{ semester_form.hidden_tag() }}
+          <div class="form-group">{{ semester_form.academic_session_id.label }}{{ semester_form.academic_session_id() }}</div>
+          <div class="form-group">{{ semester_form.name.label }}{{ semester_form.name(placeholder="First Semester") }}</div>
+          <div class="form-grid">
+            <div class="form-group">{{ semester_form.start_date.label }}{{ semester_form.start_date() }}</div>
+            <div class="form-group">{{ semester_form.end_date.label }}{{ semester_form.end_date() }}</div>
+          </div>
+          <label class="checkbox-row">{{ semester_form.is_current() }} <span>{{ semester_form.is_current.label.text }}</span></label>
+          {{ semester_form.submit(class="primary-button button-auto", disabled=not semester_form.academic_session_id.choices) }}
+        </form>
+      </section>
+
+      <section class="card">
+        <h2>Academic organizations</h2>
+        <form method="post" action="{{ url_for('admin.create_faculty') }}">
+          {{ faculty_form.hidden_tag() }}
+          <div class="form-grid">
+            <div class="form-group">{{ faculty_form.code.label }}{{ faculty_form.code() }}</div>
+            <div class="form-group">{{ faculty_form.name.label }}{{ faculty_form.name() }}</div>
+          </div>
+          {{ faculty_form.submit(class="primary-button button-auto") }}
+        </form>
+        <hr>
+        <form method="post" action="{{ url_for('admin.create_department') }}">
+          {{ department_form.hidden_tag() }}
+          <div class="form-group">{{ department_form.faculty_id.label }}{{ department_form.faculty_id() }}</div>
+          <div class="form-grid">
+            <div class="form-group">{{ department_form.code.label }}{{ department_form.code() }}</div>
+            <div class="form-group">{{ department_form.name.label }}{{ department_form.name() }}</div>
+          </div>
+          {{ department_form.submit(class="primary-button button-auto", disabled=not department_form.faculty_id.choices) }}
+        </form>
+        <hr>
+        <form method="post" action="{{ url_for('admin.create_programme') }}">
+          {{ programme_form.hidden_tag() }}
+          <div class="form-group">{{ programme_form.department_id.label }}{{ programme_form.department_id() }}</div>
+          <div class="form-grid">
+            <div class="form-group">{{ programme_form.code.label }}{{ programme_form.code() }}</div>
+            <div class="form-group">{{ programme_form.name.label }}{{ programme_form.name() }}</div>
+          </div>
+          <div class="form-group">{{ programme_form.award.label }}{{ programme_form.award(placeholder="B.Sc.") }}</div>
+          {{ programme_form.submit(class="primary-button button-auto", disabled=not programme_form.department_id.choices) }}
+        </form>
+      </section>
+    </div>
+
+    <section class="card questions-card">
+      <div class="card-heading"><h2>Configured structure</h2></div>
+      <div class="detail-grid">
+        <div>
+          <h3>Sessions and semesters</h3>
+          {% for session in sessions %}
+            <article class="structure-record">
+              <strong>{{ session.name }}</strong>
+              {% if session.is_current %}<span class="status-badge">Current</span>{% endif %}
+              <p>{{ session.start_date }} – {{ session.end_date }}</p>
+              <ul>{% for semester in session.semesters %}<li>{{ semester.name }}{% if semester.is_current %} · Current{% endif %}</li>{% endfor %}</ul>
+            </article>
+          {% else %}<p class="muted-text">No academic sessions configured.</p>{% endfor %}
+        </div>
+        <div>
+          <h3>Faculties, departments, and programmes</h3>
+          {% for faculty in faculties %}
+            <article class="structure-record">
+              <strong>{{ faculty.code }} — {{ faculty.name }}</strong>
+              {% for department in faculty.departments %}
+                <p><b>{{ department.code }}</b> {{ department.name }}</p>
+                <ul>{% for programme in department.programmes %}<li>{{ programme.code }} — {{ programme.name }}{% if programme.award %} ({{ programme.award }}){% endif %}</li>{% endfor %}</ul>
+              {% endfor %}
+            </article>
+          {% else %}<p class="muted-text">No faculties configured.</p>{% endfor %}
+        </div>
+      </div>
+    </section>
+  </section>
+{% endblock %}

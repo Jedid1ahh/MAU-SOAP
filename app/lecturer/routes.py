@@ -14,7 +14,7 @@ from app.models import Course, CourseEnrollment, EnrollmentStatus, Role, User
 
 from . import lecturer_bp
 from .auth import lecturer_required
-from .forms import CourseInvitationForm
+from .forms import AnnouncementForm, CourseInvitationForm, MaterialForm
 
 
 def owned_course(course_id: int) -> Course:
@@ -28,9 +28,10 @@ def owned_course(course_id: int) -> Course:
         )
         .options(
             selectinload(Course.exams),
-            selectinload(Course.enrollments).selectinload(
-                CourseEnrollment.student
-            ),
+            selectinload(Course.enrollments).selectinload(CourseEnrollment.student),
+            selectinload(Course.announcements),
+            selectinload(Course.materials),
+            selectinload(Course.assignments),
         )
     )
     if course is None:
@@ -82,6 +83,8 @@ def course_detail(course_id: int):
             if enrollment.status is EnrollmentStatus.PENDING
         ],
         invitation_form=CourseInvitationForm(),
+        announcement_form=AnnouncementForm(),
+        material_form=MaterialForm(),
     )
 
 
@@ -97,13 +100,9 @@ def invite_students(course_id: int):
         return redirect(url_for("lecturer.course_detail", course_id=course.id))
 
     emails = _normalized_emails(form.student_emails.data)
-    student_domain = str(
-        current_app.config["CANDIDATE_EMAIL_DOMAIN"]
-    ).casefold()
+    student_domain = str(current_app.config["CANDIDATE_EMAIL_DOMAIN"]).casefold()
     valid_domain_emails = [
-        email
-        for email in emails
-        if email.rsplit("@", 1)[-1] == student_domain
+        email for email in emails if email.rsplit("@", 1)[-1] == student_domain
     ]
     invalid_emails = sorted(set(emails) - set(valid_domain_emails))
 
@@ -117,9 +116,7 @@ def invite_students(course_id: int):
     students_by_email = {student.email: student for student in students}
     missing_emails = sorted(set(valid_domain_emails) - set(students_by_email))
 
-    existing = {
-        enrollment.student_id: enrollment for enrollment in course.enrollments
-    }
+    existing = {enrollment.student_id: enrollment for enrollment in course.enrollments}
     invited_count = 0
     for student in students:
         enrollment = existing.get(student.id)
@@ -146,8 +143,7 @@ def invite_students(course_id: int):
         )
     if missing_emails:
         flash(
-            "No registered Student account was found for: "
-            + ", ".join(missing_emails),
+            "No registered Student account was found for: " + ", ".join(missing_emails),
             "error",
         )
     if not invited_count and not invalid_emails and not missing_emails:

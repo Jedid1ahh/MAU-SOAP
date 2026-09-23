@@ -13,9 +13,10 @@
         <h1>{{ exam.title }}</h1>
         <p><strong>{{ exam.course_code }}</strong> — {{ exam.course_title }}</p>
       </div>
-      <a class="secondary-button" href="{{ url_for('lecturer.course_detail', course_id=exam.course_id) }}">
-        Back to course
-      </a>
+      <div class="form-actions">
+        {% if not exam.is_locked %}<a class="secondary-button" href="{{ url_for('lecturer.assemble_from_bank', exam_id=exam.id) }}">Add from question bank</a>{% endif %}
+        <a class="secondary-button" href="{{ url_for('lecturer.course_detail', course_id=exam.course_id) }}">Back to course</a>
+      </div>
     </div>
 
     {% if exam.is_locked %}
@@ -51,6 +52,9 @@
             <dt>Warning limit</dt>
             <dd>3 warnings</dd>
           </div>
+          <div><dt>Availability</dt><dd>{{ exam.opens_at or "Immediately" }} — {{ exam.closes_at or "No closing time" }}</dd></div>
+          <div><dt>Attempts</dt><dd>{{ exam.attempt_limit }} per Student</dd></div>
+          <div><dt>Randomization</dt><dd>Questions {{ "on" if exam.shuffle_questions else "off" }} · options {{ "on" if exam.shuffle_options else "off" }}</dd></div>
           <div>
             <dt>Result release</dt>
             <dd>
@@ -96,6 +100,18 @@
         </p>
       </section>
     </div>
+
+    <section class="card questions-card">
+      <div class="card-heading"><div><h2>Time accommodations</h2><p>Grant individual Students additional examination time.</p></div></div>
+      {% if accommodation_form.student_id.choices %}
+        <form method="post" action="{{ url_for('lecturer.save_exam_accommodation', exam_id=exam.id) }}">
+          {{ accommodation_form.hidden_tag() }}
+          <div class="form-grid"><div class="form-group">{{ accommodation_form.student_id.label }}{{ accommodation_form.student_id() }}</div><div class="form-group">{{ accommodation_form.extra_time_minutes.label }}{{ accommodation_form.extra_time_minutes(min="0", max="1440") }}</div></div>
+          <button class="secondary-button" type="submit">Save accommodation</button>
+        </form>
+      {% else %}<p class="muted-text">Enroll Students before adding accommodations.</p>{% endif %}
+      {% if exam.accommodations %}<ul class="question-list">{% for item in exam.accommodations %}<li><div class="card-heading"><span><strong>{{ item.student.full_name }}</strong> · +{{ item.extra_time_minutes }} minutes</span><form method="post" action="{{ url_for('lecturer.delete_exam_accommodation', exam_id=exam.id, accommodation_id=item.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="danger-link" type="submit">Remove</button></form></div></li>{% endfor %}</ul>{% endif %}
+    </section>
 
     <section class="card questions-card">
       <div class="card-heading">

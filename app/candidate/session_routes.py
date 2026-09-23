@@ -33,6 +33,8 @@ from .evidence_services import (
 )
 from .services import aware_utc
 from .session_services import (
+    AttemptLimitReachedError,
+    ExamUnavailableError,
     ExistingAttemptError,
     FinalizedSubmissionError,
     finalize_expired_submission,
@@ -90,12 +92,20 @@ def _lock_submission(
 
 def _question_payload(
     exam: Exam,
+    submission: Submission,
 ) -> list[dict]:
     """Serialize questions without any grading answers or matching rules."""
 
     payload = []
 
-    for question in exam.questions:
+    by_id = {question.id: question for question in exam.questions}
+    ordered_questions = [
+        by_id[question_id]
+        for question_id in (submission.question_order or list(by_id))
+        if question_id in by_id
+    ]
+
+    for question in ordered_questions:
         item = {
             "id": question.id,
             "position": question.position,
@@ -110,9 +120,15 @@ def _question_payload(
             question.question_type
             is QuestionType.MCQ
         ):
-            item["options"] = (
-                question.options or {}
+            options = question.options or {}
+            option_order = (submission.option_orders or {}).get(
+                str(question.id), list(options)
             )
+            item["options"] = {
+                key: options[key]
+                for key in option_order
+                if key in options
+            }
 
         payload.append(item)
 
@@ -292,6 +308,22 @@ def start_exam(token: str):
 
     try:
         submission, created = start_submission(exam, current_user)
+    except ExamUnavailableError as error:
+        db.session.rollback()
+        message = (
+            "This examination has not opened yet."
+            if str(error) == "upcoming"
+            else "This examination is closed."
+        )
+        flash(message, "error")
+        return redirect(url_for("student.index"))
+    except AttemptLimitReachedError:
+        db.session.rollback()
+        flash(
+            "You have used every allowed attempt for this examination.",
+            "error",
+        )
+        return redirect(url_for("student.index"))
     except ExistingAttemptError:
         db.session.rollback()
 
@@ -422,7 +454,7 @@ def session_questions(token: str):
         ), 409
 
     return jsonify(
-        questions=_question_payload(exam),
+        questions=_question_payload(exam, submission),
         responses=(
             submission.responses or {}
         ),

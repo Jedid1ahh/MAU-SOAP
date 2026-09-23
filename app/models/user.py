@@ -19,8 +19,16 @@ if TYPE_CHECKING:
     from .answer_grade import AnswerGrade
     from .course import Course
     from .course_enrollment import CourseEnrollment
+    from .coursework import (
+        Assignment,
+        AssignmentSubmission,
+        CourseAnnouncement,
+        CourseMaterial,
+    )
     from .exam import Exam
+    from .exam_accommodation import ExamAccommodation
     from .password_reset_token import PasswordResetToken
+    from .question_bank_item import QuestionBankItem
 
 
 class User(UserMixin, TimestampMixin, db.Model):
@@ -42,9 +50,7 @@ class User(UserMixin, TimestampMixin, db.Model):
         default=True,
         server_default=true(),
     )
-    email_verified_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True)
-    )
+    email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     exams: Mapped[list[Exam]] = relationship(
@@ -83,6 +89,35 @@ class User(UserMixin, TimestampMixin, db.Model):
     manual_grades: Mapped[list[AnswerGrade]] = relationship(
         back_populates="grader",
         foreign_keys="AnswerGrade.grader_user_id",
+    )
+    question_bank_items: Mapped[list[QuestionBankItem]] = relationship(
+        back_populates="lecturer",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    course_announcements: Mapped[list[CourseAnnouncement]] = relationship(
+        back_populates="author"
+    )
+    course_materials: Mapped[list[CourseMaterial]] = relationship(
+        back_populates="uploaded_by"
+    )
+    created_assignments: Mapped[list[Assignment]] = relationship(
+        back_populates="created_by"
+    )
+    assignment_submissions: Mapped[list[AssignmentSubmission]] = relationship(
+        back_populates="student",
+        foreign_keys="AssignmentSubmission.student_id",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    graded_assignment_submissions: Mapped[list[AssignmentSubmission]] = relationship(
+        back_populates="graded_by",
+        foreign_keys="AssignmentSubmission.graded_by_id",
+    )
+    exam_accommodations: Mapped[list[ExamAccommodation]] = relationship(
+        back_populates="student",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 
     @property

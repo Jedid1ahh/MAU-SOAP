@@ -19,7 +19,7 @@
     <form method="post" novalidate>
       {{ form.hidden_tag() }}
       <div class="form-grid">
-        {% for field in [form.code, form.title, form.lecturer_id, form.description] %}
+        {% for field in [form.code, form.title, form.lecturer_id, form.semester_id, form.department_id, form.programme_id, form.level, form.credit_units, form.description] %}
           <div class="form-group {{ 'form-group-wide' if field.name == 'description' else '' }}">
             {{ field.label }}
             {{ field(rows=6) if field.name == 'description' else field() }}

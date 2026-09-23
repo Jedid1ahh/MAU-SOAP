@@ -26,6 +26,7 @@ from .enums import QuestionType
 if TYPE_CHECKING:
     from .answer_grade import AnswerGrade
     from .exam import Exam
+    from .question_bank_item import QuestionBankItem
 
 
 class Question(TimestampMixin, db.Model):
@@ -42,6 +43,9 @@ class Question(TimestampMixin, db.Model):
     exam_id: Mapped[int] = mapped_column(
         ForeignKey("exams.id", ondelete="CASCADE"),
         index=True,
+    )
+    source_bank_item_id: Mapped[int | None] = mapped_column(
+        ForeignKey("question_bank_items.id", ondelete="SET NULL"), index=True
     )
     question_text: Mapped[str] = mapped_column(Text)
     question_type: Mapped[QuestionType] = mapped_column(
@@ -65,6 +69,9 @@ class Question(TimestampMixin, db.Model):
     )
 
     exam: Mapped[Exam] = relationship(back_populates="questions")
+    source_bank_item: Mapped[QuestionBankItem | None] = relationship(
+        back_populates="exam_questions"
+    )
     answer_grades: Mapped[list[AnswerGrade]] = relationship(
         back_populates="question",
         passive_deletes=True,

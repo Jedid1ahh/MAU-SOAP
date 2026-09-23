@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}{{ assignment.title }} | MAU-SOAP{% endblock %}
+{% block content %}
+  <section class="dashboard-shell">
+    <div class="page-heading"><div><span class="status-badge">{{ assignment.course.code }}</span><h1>{{ assignment.title }}</h1><p>Due {{ assignment.due_at }} UTC · {{ assignment.max_marks }} marks</p></div><a class="secondary-button" href="{{ url_for('lecturer.course_detail', course_id=assignment.course_id) }}">Back to course</a></div>
+    <section class="card"><h2>Instructions</h2><p class="pre-line">{{ assignment.instructions }}</p></section>
+    <section class="card questions-card"><div class="card-heading"><h2>Student submissions</h2><span class="muted-text">{{ assignment.submissions|length }} received</span></div>
+      {% if assignment.submissions %}<div class="question-list">{% for submission in assignment.submissions %}<article class="question-item"><div class="question-content"><h3>{{ submission.student.full_name }}</h3><p class="muted-text">{{ submission.student.email }} · submitted {{ submission.submitted_at }} UTC</p>{% if submission.text_response %}<p class="pre-line">{{ submission.text_response }}</p>{% endif %}{% if submission.storage_name %}<a href="{{ url_for('lecturer.download_assignment_submission', submission_id=submission.id) }}">Download {{ submission.original_filename }}</a>{% endif %}{% if submission.awarded_marks is not none %}<p><strong>Current grade:</strong> {{ submission.awarded_marks }}/{{ assignment.max_marks }}</p>{% endif %}</div><form method="post" action="{{ url_for('lecturer.grade_assignment_submission', assignment_id=assignment.id, submission_id=submission.id) }}">{{ grade_form.hidden_tag() }}<div class="form-group">{{ grade_form.awarded_marks.label }}{{ grade_form.awarded_marks(max=assignment.max_marks, step="0.01") }}</div><div class="form-group">{{ grade_form.feedback.label }}{{ grade_form.feedback(rows="3") }}</div><button class="secondary-button" type="submit">Save grade</button></form></article>{% endfor %}</div>{% else %}<div class="empty-state compact-empty"><p>No submissions received yet.</p></div>{% endif %}
+    </section>
+  </section>
+{% endblock %}

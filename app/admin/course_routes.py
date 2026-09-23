@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.extensions import db
-from app.models import Course, Role, User
+from app.models import Course, Department, Programme, Role, Semester, User
 
 from . import admin_bp
 from .auth import admin_required
@@ -36,6 +36,7 @@ def _course(course_id: int) -> Course:
             selectinload(Course.lecturer),
             selectinload(Course.exams),
             selectinload(Course.enrollments),
+            selectinload(Course.question_bank_items),
         )
     )
     if course is None:
@@ -56,6 +57,11 @@ def _course_form(course: Course | None = None) -> CourseForm:
                     "title": course.title,
                     "description": course.description,
                     "lecturer_id": course.lecturer_id,
+                    "semester_id": course.semester_id or 0,
+                    "department_id": course.department_id or 0,
+                    "programme_id": course.programme_id or 0,
+                    "level": course.level,
+                    "credit_units": course.credit_units,
                 }
                 if course is not None
                 else None
@@ -65,6 +71,24 @@ def _course_form(course: Course | None = None) -> CourseForm:
     form.lecturer_id.choices = [
         (lecturer.id, f"{lecturer.full_name} — {lecturer.email}")
         for lecturer in lecturers
+    ]
+    semesters = db.session.scalars(
+        select(Semester).order_by(Semester.start_date.desc())
+    ).all()
+    departments = db.session.scalars(select(Department).order_by(Department.name)).all()
+    programmes = db.session.scalars(select(Programme).order_by(Programme.name)).all()
+    form.semester_id.choices = [(0, "Not specified")] + [
+        (
+            item.id,
+            f"{item.academic_session.name} — {item.name}",
+        )
+        for item in semesters
+    ]
+    form.department_id.choices = [(0, "Not specified")] + [
+        (item.id, f"{item.code} — {item.name}") for item in departments
+    ]
+    form.programme_id.choices = [(0, "Not specified")] + [
+        (item.id, f"{item.code} — {item.name}") for item in programmes
     ]
     return form
 
@@ -76,6 +100,11 @@ def _apply_form(course: Course, form: CourseForm) -> None:
     course.code = form.code.data.strip().upper()
     course.title = form.title.data.strip()
     course.description = (form.description.data or "").strip() or None
+    course.semester_id = form.semester_id.data or None
+    course.department_id = form.department_id.data or None
+    course.programme_id = form.programme_id.data or None
+    course.level = form.level.data
+    course.credit_units = form.credit_units.data
     lecturer_changed = course.lecturer_id != new_lecturer_id
     course.lecturer_id = new_lecturer_id
     for exam in course.exams:
@@ -83,6 +112,9 @@ def _apply_form(course: Course, form: CourseForm) -> None:
         exam.course_title = course.title
         if lecturer_changed:
             exam.admin_id = new_lecturer_id
+    if lecturer_changed:
+        for item in course.question_bank_items:
+            item.lecturer_id = new_lecturer_id
 
 
 @admin_bp.route("/courses/new", methods=["GET", "POST"])
@@ -101,6 +133,11 @@ def create_course():
                 code=code,
                 title=form.title.data.strip(),
                 description=(form.description.data or "").strip() or None,
+                semester_id=form.semester_id.data or None,
+                department_id=form.department_id.data or None,
+                programme_id=form.programme_id.data or None,
+                level=form.level.data,
+                credit_units=form.credit_units.data,
                 lecturer_id=form.lecturer_id.data,
                 created_by_admin_id=current_user.id,
             )

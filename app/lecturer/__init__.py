@@ -11,4 +11,8 @@ from app.admin import (  # noqa: E402, F401
     supervision_routes,
 )
 
-from . import routes  # noqa: E402, F401
+from . import (  # noqa: E402
+    coursework_routes,  # noqa: E402, F401
+    question_bank_routes,  # noqa: E402, F401
+    routes,  # noqa: E402, F401
+)
